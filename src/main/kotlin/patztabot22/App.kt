@@ -2,6 +2,7 @@ package patztabot22
 
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.JDA
+import net.dv8tion.jda.api.entities.*
 
 fun main( args: Array<String> )
 {
@@ -24,6 +25,7 @@ fun main( args: Array<String> )
 
     println("connecting...")
     val builder = JDABuilder.createDefault(args[0])
+      .setActivity(Activity.playing("ludus mundi"))
     jda = builder.build()
 
   } catch (e: javax.security.auth.login.LoginException) {
@@ -40,7 +42,7 @@ fun main( args: Array<String> )
   val bot = Bot(jda, pic)
   jda.addEventListener(bot)
 
-  while (true) {
+  prompt@ while (true) {
 
     print("\nINPUT> ")
     var input = readLine()!!
@@ -65,9 +67,12 @@ fun main( args: Array<String> )
       "lg"    -> bot.lg
       "m", "msg"
               -> bot.msg
-      //"quit", "exit" -> break
       "pic"   -> bot.pic
-      "pics" -> pic.list
+      "pics"  -> pic.list
+      "link"  -> bot.link
+      "quit", "exit"
+              -> break@prompt
+      "leave" -> bot.leave
       else    -> { text: String -> println("nil"); 1 }
     }
 
@@ -79,5 +84,7 @@ fun main( args: Array<String> )
     }
 
   }
+
+  jda.shutdown()
 
 }
