@@ -3,7 +3,7 @@ me, but bot \
 a discord human-controlled bot
 
 # Manual
-the project uses maven
+the project uses maven \
 some properties are hardcoded cuz laziness (e.g. Pic path)
 
 to compile \
