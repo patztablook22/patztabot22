@@ -2,7 +2,7 @@
 
 - `notebook` - i usually run jupyter lab here to try stuff
 - `src` - code
-    - `transfos` - manually implemented transformer components
+    - `trafos` - manually implemented transformer components
         - in Torch and [Nite](https://github.com/patztablook22/nite), which is a library (essentially a wrapper)
         I am writing on top of it to \
         a) just play around with Torch \
