@@ -2,11 +2,11 @@ import torch
 import nite
 import numpy as np
 
-from transfos.components import attention
-from transfos.components import MultiheadAttention
-from transfos.components import FeedForwardNetwork
-from transfos.components import positional_encoding
-from transfos.components import TransformerEncoder
+from trafos.components import attention
+from trafos.components import MultiheadAttention
+from trafos.components import FeedForwardNetwork
+from trafos.components import positional_encoding
+from trafos.components import TransformerEncoder
 
 
 def attention_test():

@@ -1,7 +1,7 @@
 import torch
 import nite
-from transfos.components import positional_encoding
-from transfos.gpt_components import GptDecoder
+from trafos.components import positional_encoding
+from trafos.gpt_components import GptDecoder
 
 
 class Gpt2(nite.Module):

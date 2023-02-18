@@ -1,7 +1,7 @@
 import torch
 import nite
 
-from transfos.components import MultiheadAttention, FeedForwardNetwork
+from trafos.components import MultiheadAttention, FeedForwardNetwork
 
 
 class GptDecoder(nite.Module):
