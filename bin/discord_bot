@@ -1,0 +1,29 @@
+#!/usr/bin/bash
+
+PROJECT="."
+
+if [ -d "$1" ]; then
+    PROJECT="$1"
+fi
+
+CONFIG=$PROJECT/config
+SRC=$PROJECT/src
+
+if [ ! -d "$CONFIG" ]; then
+    echo "Could not find config directory." >&2
+    exit 1
+fi
+
+if [ ! -d "$SRC" ]; then
+    echo "Could not find src directory." >&2
+    exit 1
+fi
+
+while :; do
+    python3 -- "$SRC/chatbot/DiscordBot.py" \
+        "$CONFIG/discord_config.json" \
+        "$CONFIG/discord_token.txt"
+
+    [ ! "$?" -eq 69 ] && break
+done
+

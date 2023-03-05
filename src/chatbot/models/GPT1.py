@@ -1,6 +1,6 @@
 from Model import Model
 
-class Gpt1(Model):
+class GPT1(Model):
     def __init__(self):
         from transformers import OpenAIGPTTokenizer, OpenAIGPTModel
         from transformers import pipeline, set_seed
@@ -12,5 +12,5 @@ class Gpt1(Model):
     def kill(self):
         self.pipeline = None
 
-def init():
-    return Gpt1()
+def load():
+    return GPT1()

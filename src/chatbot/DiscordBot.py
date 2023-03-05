@@ -4,8 +4,9 @@ from discord import app_commands
 import sys
 import asyncio
 from typing import Literal, Optional
-from model_init import model_init as model_init_external
 import json
+import importlib
+
 
 class DiscordBot(commands.Bot):
     def __init__(self, config):
@@ -16,29 +17,47 @@ class DiscordBot(commands.Bot):
                          intents=intents)
 
         self.model = None
+        self.model_name = None
         self.timed_channels = {}
         self.timed_channels_span = 3 * 60
 
         self.command_permissions = [(u['name'], str(u['discriminator'])) for u in config['command_permissions']]
         self.chat_permissions = [(u['name'], str(u['discriminator'])) for u in config['chat_permissions']]
+        self.default_model = config.get('default_model', None)
+        self.requires_restart = False
 
     async def setup_hook(self):
+        #self.tree.clear_commands(guild=None)
+        #await self.tree.sync()
+
         @self.tree.command()
         @app_commands.describe(action='Action type',
                                model='Model name (optional)')
         async def model(interaction: discord.Interaction,
-                        action: Literal['init', 'kill'],
-                        model: Optional[str]
-                        ):
+                        action: Literal['load', 'unload'],
+                        model: Optional[str]):
             """Manages underlying language model"""
             await self.model_command(interaction, action, model)
 
-    async def model_init(self, name):
-        await self.model_kill()
-        try:
-            self.model = model_init_external(name)
+        @self.tree.command()
+        @app_commands.describe(action='Action type')
+        async def bot(interaction: discord.Interaction,
+                      action: Literal['stop', 'restart', 'status']):
+            """Controls the bot service"""
+            await self.bot_command(interaction, action)
 
-            print(f'Initialized model {name}')
+        await self.tree.sync()
+
+    async def model_load(self, name):
+        await self.model_unload()
+        print(f'Loading model {name}...')
+        try:
+            module = importlib.import_module(f'models.{name}')
+
+            self.model = module.load()
+            self.model_name = name
+
+            print(f'Loaded model {name}.')
             activity = discord.Activity(name=name,
                                         details='24/7 in',
                                         type=discord.ActivityType.playing,
@@ -48,45 +67,75 @@ class DiscordBot(commands.Bot):
             await self.change_presence(activity=activity, 
                                        status=discord.Status.online)
         except:
-            pass
+            print(f'Loading model {name} failed.')
 
     def model_active(self):
         return self.model is not None
 
-    async def model_kill(self):
+    async def model_unload(self):
         if self.model is not None:
-            self.model.kill()
+            del self.model
             self.model = None
-            print(f'Killed model')
+            self.model_name = None
+            print(f'Unloaded model {self.model_name}.')
             await self.change_presence(activity=None, status=None)
 
-    async def model_command(self, interaction, action, model):
-        print(self.command_permissions)
+    async def bot_command(self, interaction, action):
         if (interaction.user.name, interaction.user.discriminator) not in self.command_permissions:
             await interaction.response.send_message('permissions not granted')
             return
 
-        if action == 'init':
-            await interaction.response.send_message('initializing model...')
-            await self.model_init(model)
+        if action == 'stop':
+            print('Stopping...')
+            await interaction.response.send_message('Stopping...')
+            await self.close()
+            return
+
+        elif action == 'restart':
+            print('Restarting...')
+            await interaction.response.send_message('Restarting...')
+            self.requires_restart = True
+            await self.close()
+            return
+
+        elif action == 'status':
+            print('Dumping bot status...')
+            await interaction.response.send_message('*Le status*')
+            return
+
+        else:
+            interaction.response.send_message('Unknown action.')
+
+    async def model_command(self, interaction, action, model):
+        if (interaction.user.name, interaction.user.discriminator) not in self.command_permissions:
+            await interaction.response.send_message('permissions not granted')
+            return
+
+        if action == 'load':
+            await interaction.response.send_message(f'Loading model {model}...')
+            await self.model_load(model)
             if self.model_active():
-                await interaction.channel.send('initialized')
+                await interaction.channel.send('Loaded.')
                 self.pay_attention(interaction.channel, interaction.created_at)
             else:
-                await interaction.channel.send('failed')
+                await interaction.channel.send('Failed.')
 
-        elif action == 'kill':
+        elif action == 'unload':
             if not self.model_active():
-                await interaction.response.send_message('nothing to kill')
+                await interaction.response.send_message('No model is currently loaded.')
                 return
 
-            await interaction.response.send_message('killing model...')
-            await self.model_kill()
-            await interaction.channel.send('killed')
+            await interaction.response.send_message('Unloading model {self.model_name}...')
+            await self.model_unload()
+            await interaction.channel.send('Unloaded.')
+
+        else:
+            await interaction.response.send_message("Unknown action.")
 
     async def on_ready(self):
-        print(f'Logged in as {self.user}')
-        await self.model_init('Gpt1')
+        print(f'Logged in as {self.user}.')
+        if self.default_model is not None:
+            await self.model_load(self.default_model)
 
     def pay_attention(self, channel, datetime):
         if channel.type in [discord.ChannelType.private,
@@ -166,6 +215,8 @@ def main(argv):
 
     bot = DiscordBot(config)
     bot.run(token)
+    if bot.requires_restart:
+        exit(69)
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -15,5 +15,7 @@
             "name": "othernick",
             "discriminator": 5678
         }
-    ]
+    ],
+
+    "default_model": "GPT1"
 }
