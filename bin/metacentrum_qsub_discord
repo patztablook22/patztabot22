@@ -1,0 +1,33 @@
+#!/usr/bin/bash
+
+#PBS -N discord_bot
+#PBS -j oe
+
+DATADIR=/storage/brno2/home/zavorap/
+PROJECT=$DATADIR/rp-patrik-zavoral
+SCRATCH_PROJECT=$SCRATCHDIR/rp-patrik-zavoral
+SCRATCH_VENV=$SCRATCH_PROJECT/venv
+
+export TMPDIR=$SCRATCHDIR
+
+# add modules
+
+module add python/python-3.10.4-intel-19.0.4-sc7snnf
+
+
+if [ ! -d $SCRATCH_VENV ]; then
+    mkdir -p $SCRATCH_VENV
+    python3.10 -m venv $SCRATCH_VENV
+    source $SCRATCH_VENV/bin/activate
+    pip3 install discord.py torch transformers
+else
+    source $SCRATCH_VENV/bin/activate
+fi
+
+CONFIG=$PROJECT/discord_config.json
+TOKEN=$PROJECT/discord_token.txt
+
+python3 -- $PROJECT/src/chatbot/DiscordBot.py $CONFIG $TOKEN
+
+rm -rf $SCRATCHDIR/*
+
