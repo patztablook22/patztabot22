@@ -1,0 +1,19 @@
+{
+    "command_permissions": [
+        {
+            "name": "somenick",
+            "discriminator": 1234
+        }
+    ],
+
+    "chat_permissions": [
+        {
+            "name": "somenick",
+            "discriminator": 1234
+        },
+        {
+            "name": "othernick",
+            "discriminator": 5678
+        }
+    ]
+}
