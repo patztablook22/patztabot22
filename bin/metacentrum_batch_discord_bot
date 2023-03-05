@@ -19,15 +19,14 @@ if [ ! -d $SCRATCH_VENV ]; then
     mkdir -p $SCRATCH_VENV
     python3.10 -m venv $SCRATCH_VENV
     source $SCRATCH_VENV/bin/activate
-    pip3 install discord.py torch transformers
+
+    pip3 install discord.py transformers torch ||
+        (echo "Installing dependencies failed." >&2 && exit 1)
 else
     source $SCRATCH_VENV/bin/activate
 fi
 
-CONFIG=$PROJECT/discord_config.json
-TOKEN=$PROJECT/discord_token.txt
+$PROJECT/bin/discord_bot
 
-python3 -- $PROJECT/src/chatbot/DiscordBot.py $CONFIG $TOKEN
-
-rm -rf $SCRATCHDIR/*
+#rm -rf $SCRATCHDIR/*
 
