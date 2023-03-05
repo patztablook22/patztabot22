@@ -66,7 +66,7 @@ class FeedForwardNetwork(nite.Module):
     def __init__(self, embed_dim, hidden_dim):
         self._seq = nite.Seq(
             nite.LayerNorm([embed_dim]),
-            nite.Dense(embed_dim, hidden_dim, 'relu'),
+            nite.Dense(embed_dim, hidden_dim, 'gelu'),
             nite.Dense(hidden_dim, embed_dim)
         )
 

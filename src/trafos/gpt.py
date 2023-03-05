@@ -3,19 +3,21 @@ import nite
 from trafos.components import positional_encoding
 from trafos.gpt_components import GptDecoder
 
-
-class Gpt2(nite.Module):
-    def __init__(self):
-        embed_dim = 1024
-        length = 1024
-        heads = 8
-        ffn_dim = 4 * embed_dim
-        vocab_size = 10000
+class Gpt1(nite.Module):
+    def __init__(self, 
+                 vocab_size, 
+                 decoders=12,
+                 heads=12,
+                 embed_dim=768,
+                 ffn_dim=4*768,
+                 length=512):
 
         self._embedding = nite.Embedding(vocab_size, embed_dim)
 
-        decoders = [GptDecoder(embed_dim, heads, ffn_dim) for _ in range(12)]
-        self._decoders = nite.Seq(*decoders)
+        self._decoders = nite.Seq(*[
+            GptDecoder(embed_dim, heads, ffn_dim) for _ in range(decoders)
+        ])
+            
 
         self._logits = nite.Dense(embed_dim, vocab_size)
 
