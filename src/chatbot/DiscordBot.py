@@ -2,10 +2,12 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import sys
+import os
 import asyncio
 from typing import Literal, Optional
 import json
 import importlib
+from CommandLogger import CommandLogger
 
 
 class DiscordBot(commands.Bot):
@@ -25,6 +27,15 @@ class DiscordBot(commands.Bot):
         self.chat_permissions = [(u['name'], str(u['discriminator'])) for u in config['chat_permissions']]
         self.default_model = config.get('default_model', None)
         self.requires_restart = False
+
+    async def log(self, message, interaction=None):
+        print(message)
+        if interaction is not None:
+            if interaction.response.is_done():
+                interaction.channel.send(message)
+            else:
+                interaction.response.send_message(message)
+
 
     async def setup_hook(self):
         #self.tree.clear_commands(guild=None)
@@ -48,16 +59,23 @@ class DiscordBot(commands.Bot):
 
         await self.tree.sync()
 
-    async def model_load(self, name):
-        await self.model_unload()
-        print(f'Loading model {name}...')
+    async def model_load(self, logger, name):
+        print(f'{os.path.dirname(__file__)}/models/{name}.py')
+        if not os.path.exists(f'{os.path.dirname(__file__)}/models/{name}.py'):
+            await logger.write(f'Unknown model: {name}.')
+            return False
+
+        if self.model_loaded():
+            await self.model_unload(logger)
+
+        await logger.write(f'Loading model {name}...')
+
         try:
             module = importlib.import_module(f'models.{name}')
 
             self.model = module.load()
             self.model_name = name
 
-            print(f'Loaded model {name}.')
             activity = discord.Activity(name=name,
                                         details='24/7 in',
                                         type=discord.ActivityType.playing,
@@ -66,76 +84,99 @@ class DiscordBot(commands.Bot):
 
             await self.change_presence(activity=activity, 
                                        status=discord.Status.online)
-        except:
-            print(f'Loading model {name} failed.')
 
-    def model_active(self):
+            await logger.write(f'Loaded..')
+            return True
+        except:
+            await logger.write(f'Failed.')
+            return False
+
+    async def model_unload(self, logger):
+        if self.model is None:
+            await logger.write('No model is currently loaded.')
+            return False
+
+        del self.model
+        name = self.model_name
+        self.model = None
+        self.model_name = None
+        await self.change_presence(activity=None, status=None)
+
+        await logger.write(f'Unloaded model {name}.')
+
+        return True
+
+    def model_loaded(self):
         return self.model is not None
 
-    async def model_unload(self):
-        if self.model is not None:
-            del self.model
-            self.model = None
-            self.model_name = None
-            print(f'Unloaded model {self.model_name}.')
-            await self.change_presence(activity=None, status=None)
+    async def bot_restart(self, logger):
+        await logger.write('Restarting...')
+        del logger.interaction
+        self.requires_restart = True
+        await self.close()
+
+    async def bot_stop(self, logger):
+        await logger.write('Stopping...')
+        del logger.interaction
+        await self.close()
+
+    async def git_pull(self, logger):
+        await logger.write('Running git pull...')
+        return_value = os.system(f'cd "{os.path.dirname(__file__)}" && git pull')
+        if return_value != 0:
+            await logger.write('Failed.')
+            return False
+
+        await logger.write('Successfully pulled the repo.')
+        return True
+
+    async def bot_update(self, logger):
+        if await self.git_pull(logger):
+            await self.bot_restart(logger)
+
+    async def bot_status(self, logger):
+        await logger.write('*le status or something idk*')
 
     async def bot_command(self, interaction, action):
         if (interaction.user.name, interaction.user.discriminator) not in self.command_permissions:
-            await interaction.response.send_message('permissions not granted')
+            await interaction.response.send_message('Command permissions not granted.')
             return
+
+        logger = CommandLogger(interaction)
 
         if action == 'stop':
-            print('Stopping...')
-            await interaction.response.send_message('Stopping...')
-            await self.close()
-            return
+            await self.bot_stop(logger)
 
         elif action == 'restart':
-            print('Restarting...')
-            await interaction.response.send_message('Restarting...')
-            self.requires_restart = True
-            await self.close()
-            return
+            await self.bot_restart(logger)
+
+        elif action == 'update':
+            await self.bot_update(logger)
 
         elif action == 'status':
-            print('Dumping bot status...')
-            await interaction.response.send_message('*Le status*')
-            return
+            await self.bot_status(logger)
 
         else:
             interaction.response.send_message('Unknown action.')
 
-    async def model_command(self, interaction, action, model):
+    async def model_command(self, interaction, action, name):
         if (interaction.user.name, interaction.user.discriminator) not in self.command_permissions:
-            await interaction.response.send_message('permissions not granted')
+            await interaction.response.send_message('Command permissions not granted.')
             return
 
+        logger = CommandLogger(interaction)
+
         if action == 'load':
-            await interaction.response.send_message(f'Loading model {model}...')
-            await self.model_load(model)
-            if self.model_active():
-                await interaction.channel.send('Loaded.')
-                self.pay_attention(interaction.channel, interaction.created_at)
-            else:
-                await interaction.channel.send('Failed.')
+            await self.model_load(logger, name)
 
         elif action == 'unload':
-            if not self.model_active():
-                await interaction.response.send_message('No model is currently loaded.')
-                return
+            await self.model_unload(logger)
 
-            await interaction.response.send_message('Unloading model {self.model_name}...')
-            await self.model_unload()
-            await interaction.channel.send('Unloaded.')
-
-        else:
-            await interaction.response.send_message("Unknown action.")
 
     async def on_ready(self):
         print(f'Logged in as {self.user}.')
         if self.default_model is not None:
-            await self.model_load(self.default_model)
+            await self.model_load(CommandLogger(), self.default_model)
 
     def pay_attention(self, channel, datetime):
         if channel.type in [discord.ChannelType.private,
