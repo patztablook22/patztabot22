@@ -45,7 +45,7 @@ class DiscordBot(commands.Bot):
         @app_commands.describe(action='Action type',
                                model='Model name (optional)')
         async def model(interaction: discord.Interaction,
-                        action: Literal['load', 'unload'],
+                        action: Literal['list', 'load', 'unload'],
                         model: Optional[str]):
             """Manages underlying language model"""
             await self.model_command(interaction, action, model)
@@ -109,6 +109,16 @@ class DiscordBot(commands.Bot):
     def model_loaded(self):
         return self.model is not None
 
+    def models(self):
+        files = os.listdir(f'{os.path.dirname(__file__)}/models')
+        buffer = []
+        for file in files:
+            if file[0] in '_.': continue
+            if file[-3:] != '.py': continue
+            buffer.append(file[:-3])
+
+        return buffer
+
     async def bot_restart(self, logger):
         await logger.write('Restarting...')
         del logger.interaction
@@ -171,6 +181,13 @@ class DiscordBot(commands.Bot):
 
         elif action == 'unload':
             await self.model_unload(logger)
+
+        elif action == 'list':
+            models = self.models()
+            interaction.write(f'Available models: {", ".join(models)}')
+
+        else:
+            interaction.response.send_message('Unknown action.')
 
 
     async def on_ready(self):
