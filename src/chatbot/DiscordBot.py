@@ -122,7 +122,7 @@ class DiscordBot(commands.Bot):
 
     async def git_pull(self, logger):
         await logger.write('Running git pull...')
-        return_value = os.system(f'cd "{os.path.dirname(__file__)}" && git pull')
+        return_value = os.system(f'cd "{os.path.dirname(__file__)}" && git pull mirror master')
         if return_value != 0:
             await logger.write('Failed.')
             return False
