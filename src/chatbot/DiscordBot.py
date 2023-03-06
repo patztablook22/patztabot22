@@ -53,7 +53,7 @@ class DiscordBot(commands.Bot):
         @self.tree.command()
         @app_commands.describe(action='Action type')
         async def bot(interaction: discord.Interaction,
-                      action: Literal['stop', 'restart', 'status']):
+                      action: Literal['stop', 'restart', 'update', 'status']):
             """Controls the bot service"""
             await self.bot_command(interaction, action)
 
