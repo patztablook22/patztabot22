@@ -20,7 +20,7 @@ if [ ! -d $SCRATCH_VENV ]; then
     python3.10 -m venv $SCRATCH_VENV
     source $SCRATCH_VENV/bin/activate
 
-    pip3 install discord.py transformers torch ||
+    pip3 install git+https://github.com/patztablook22/genbot transformers tensorflow ||
         (echo "Installing dependencies failed." >&2 && exit 1)
 else
     source $SCRATCH_VENV/bin/activate
