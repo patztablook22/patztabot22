@@ -1,16 +1,15 @@
-from Model import Model
+import genbot
 
-class GPT1(Model):
+@genbot.model
+class GPT1:
+    """Vanilla pretrained OpenAI GPT-1, no custom finetuning or prompt engineering"""
+
     def __init__(self):
-        from transformers import OpenAIGPTTokenizer, OpenAIGPTModel
-        from transformers import pipeline, set_seed
+        from transformers import pipeline
         self.pipeline = pipeline('text-generation', model='openai-gpt')
+        pass
 
-    def __call__(self, context):
-        return self.pipeline(context[-512:])[0]['generated_text']
-
-    def kill(self):
-        self.pipeline = None
-
-def load():
-    return GPT1()
+    async def __call__(self, message):
+        async with message.channel.typing():
+            context = message.content
+            return self.pipeline(context[-512:])[0]['generated_text']
