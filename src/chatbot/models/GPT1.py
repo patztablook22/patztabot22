@@ -1,6 +1,3 @@
-import genbot
-
-@genbot.model
 class GPT1:
     """Vanilla pretrained OpenAI GPT-1, no custom finetuning or prompt engineering"""
 
