@@ -2,33 +2,30 @@ import time
 import genbot
 import importlib
 
-class GPT1(genbot.BatchedModel):
-    """Vanilla pretrained OpenAI GPT-1, no custom finetuning or prompt engineering"""
+class OPT1_3b(genbot.BatchedModel):
+    """Vanilla pretrained facebook OPT 1.3b version, no custom finetuning or prompt engineering"""
 
     def __init__(self):
         from models.llm_cache import llm_cache
         if 'gpt1' not in llm_cache:
-            #from transformers import OpenAIGPTLMHeadModel, OpenAIGPTTokenizer
-            # tok = OpenAIGPTTokenizer.from_pretrained('openai-gpt')
-            # mod = OpenAIGPTLMHeadModel.from_pretrained('openai-gpt')
             from transformers import TFAutoModelWithLMHead, AutoTokenizer
-            tok = AutoTokenizer.from_pretrained('openai-gpt')
-            mod = TFAutoModelWithLMHead.from_pretrained('openai-gpt')
-            # self.pipeline = pipeline('text-generation', model='openai-gpt',
-            llm_cache['gpt1'] = (tok, mod)
+            tok = AutoTokenizer.from_pretrained('facebook/opt-1.3b')
+            mod = TFAutoModelWithLMHead.from_pretrained('facebook/opt-1.3b')
+            llm_cache['gpt1.3b'] = (tok, mod)
                                  # max_new_tokens=20)
             tok.padding_side = 'left'
             tok.add_special_tokens({'pad_token': '[PAD]'})
 
-        tok, mod = llm_cache['gpt1']
+
+        tok, mod = llm_cache['opt1.3b']
 
         self.tokenizer = tok
         self.model = mod
         super().__init__(max_size=1)
 
     def batch(self, feeds):
-        enc = self.tokenizer(feeds, padding=True, return_tensors='pt')
-        ids = self.model.generate(**enc, max_new_tokens=100)
+        enc = self.tokenizer(feeds, padding=True, return_tensors='tf')
+        ids = self.model.generate(enc, max_new_tokens=100)
         texts = self.tokenizer.batch_decode(ids, skip_special_tokens=True)
 
         return texts
@@ -62,3 +59,4 @@ class GPT1(genbot.BatchedModel):
             one = new[:new.find('"')].strip()
 
             return one
+
