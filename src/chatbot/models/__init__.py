@@ -31,3 +31,18 @@ def opt1_3b():
             return str(e)
 
     return reload_run
+
+@genbot.model(name='GPT-2')
+def gpt2():
+    """Vanilla pretrained facebook GPT-2, no custom finetuning or prompt engineering"""
+
+    async def reload_run(channel, user):
+        try: 
+            import models.GPT2 as GPT2
+            importlib.reload(GPT2)
+            target = GPT2.GPT2()
+            return await target(channel, user)
+        except Exception as e:
+            return str(e)
+
+    return reload_run

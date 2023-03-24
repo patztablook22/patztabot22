@@ -7,7 +7,7 @@ class OPT1_3b(genbot.BatchedModel):
 
     def __init__(self):
         from models.llm_cache import llm_cache
-        if 'gpt1' not in llm_cache:
+        if 'opt1.3b' not in llm_cache:
             from transformers import TFAutoModelWithLMHead, AutoTokenizer
             tok = AutoTokenizer.from_pretrained('facebook/opt-1.3b')
             mod = TFAutoModelWithLMHead.from_pretrained('facebook/opt-1.3b')
