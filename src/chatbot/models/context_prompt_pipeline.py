@@ -11,7 +11,6 @@ async def context_prompt_pipeline(channel: discord.TextChannel,
                                   message_format = None,
                                   postfix = None,
                                   ):
-
     if message_format == None:
         message_format = lambda nick, content: f'{nick} said: "{content}", \n'
 

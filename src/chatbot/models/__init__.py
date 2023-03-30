@@ -46,3 +46,22 @@ def gpt2():
             return str(e)
 
     return reload_run
+
+@genbot.model(name='GPT-2-xl')
+def gpt2xl():
+    """Vanilla pretrained facebook GPT-2 XL variant, no custom finetuning or prompt engineering"""
+    import models.GPT2xl as GPT2xl
+    importlib.reload(GPT2xl)
+    target = GPT2xl.GPT2xl()
+    return target
+
+    async def reload_run(channel, user):
+        try: 
+            import models.GPT2xl as GPT2xl
+            importlib.reload(GPT2xl)
+            target = GPT2xl.GPT2xl()
+            return await target(channel, user)
+        except Exception as e:
+            return str(e)
+
+    return reload_run

@@ -2,7 +2,7 @@ import time
 import genbot
 import importlib
 
-class GPT1(genbot.PromptPipeline):
+class GPT2xl(genbot.PromptPipeline):
     """Vanilla pretrained OpenAI GPT-1, no custom finetuning or prompt engineering"""
 
     GEN_PARAMS = {
@@ -17,25 +17,26 @@ class GPT1(genbot.PromptPipeline):
 
     def __init__(self):
         from models.llm_cache import llm_cache
-        if 'openai-gpt' not in llm_cache:
+        model='gpt2-xl'
+        if model not in llm_cache:
             from transformers import pipeline
             pl = pipeline('text-generation',
-                          model='openai-gpt',
-                          **GPT1.GEN_PARAMS)
+                          model=model,
+                          **GPT2xl.GEN_PARAMS)
 
-            llm_cache['openai-gpt'] = pl
+            llm_cache[model] = pl
 
-        self.pipeline = llm_cache['openai-gpt']
+        self.pipeline = llm_cache[model]
 
         super().__init__(batch_size_max=0)
 
     def process(self, prompts):
-        outputs = self.pipeline(prompts, **GPT1.GEN_PARAMS)
+        outputs = self.pipeline(prompts, **GPT2xl.GEN_PARAMS)
         #print('=' * 30)
         #print(outputs)
         gens = [i[0]['generated_text'] for i in outputs]
-        print('=' * 30)
-        print(gens)
+        #print('=' * 30)
+        #print(gens)
         return gens
 
     async def create_prompt(self, channel, user):
