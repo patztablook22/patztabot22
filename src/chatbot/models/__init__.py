@@ -1,7 +1,7 @@
 import genbot
 import importlib
 
-@genbot.model(name='GPT-1', default=True)
+@genbot.model(name='GPT-1')
 def gpt1():
     """Vanilla pretrained OpenAI GPT-1, no custom finetuning or prompt engineering"""
 
@@ -61,6 +61,26 @@ def gpt2xl():
             importlib.reload(GPT2xl)
             target = GPT2xl.GPT2xl()
             return await target(channel, user)
+        except Exception as e:
+            return str(e)
+
+    return reload_run
+
+@genbot.model(name='Eliza')
+def eliza():
+    """Eliza, 1965."""
+
+    async def reload_run(channel, user):
+        try: 
+            import models.Eliza as Eliza
+            importlib.reload(Eliza)
+            eliza = Eliza.Eliza()
+            async for m in channel.history(limit=1, oldest_first=False):
+                prompt = m.content
+                break
+
+            assert isinstance(prompt, str)
+            return eliza.respond(prompt)
         except Exception as e:
             return str(e)
 
