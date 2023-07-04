@@ -10,7 +10,7 @@ SRC=$PROJECT/src
 
 while :; do
     python3 -- "$SRC/chatbot/main.py" \
-        "$CONFIG/discord_config.json" \
+        "$CONFIG/discord_config.ini" \
         "$CONFIG/discord_token.txt"
 
     [ "$?" -eq 69 ] || break
