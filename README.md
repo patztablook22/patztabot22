@@ -30,4 +30,4 @@ Subtasks for the RP will possibly include:
 - integrating the LLM into the Discord bot
 - testing the bot manually or automatically on a set of scenarios (introduction, small talk, discussion, ...)
 
-The Batchelor thesis is expected to focus on the ways of tuning LLMs for downstrean tasks, such as parameter efficient fine tuning (PEFT) techniaues, prompt tuning, etc.
+The Bachelor thesis is expected to focus on what is currently called "AI alignment", especially on aligning pretrained LLMs for downstream tasks, e.g. using parameter efficient fine tuning (PEFT) techniaues, prompt tuning, RLHF, etc.
