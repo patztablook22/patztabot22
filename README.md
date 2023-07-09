@@ -13,6 +13,8 @@
 
 ## RP specification
 
+### Personal AI double
+
 The goal is to train a LLM on the author's messenges online (collected from Meta's Messenger) and integrate the model
 into a Discord chatbot. 
 The motivation was to create an AI double of the author.
@@ -27,3 +29,5 @@ Subtasks for the RP will possibly include:
 - fine tuning a LLM (small enough for individual use) using a remote cluster on the dataset
 - integrating the LLM into the Discord bot
 - testing the bot manually or automatically on a set of scenarios (introduction, small talk, discussion, ...)
+
+The Batchelor thesis is expected to focus on the ways of tuning LLMs for downstrean tasks, such as parameter efficient fine tuning (PEFT) techniaues, prompt tuning, etc.
