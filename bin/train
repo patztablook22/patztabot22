@@ -1,0 +1,14 @@
+#!/usr/bin/bash
+
+PROJECT="$(dirname $0)/.."
+
+CONFIG=$PROJECT/config
+SRC=$PROJECT/src
+DATA=$PROJECT/data
+
+[ -d "$CONFIG" ] || (echo "Could not find config directory." >&2 && exit 1)
+[ -d "$SRC" ]    || (echo "Could not find src directory." >&2    && exit 1)
+[ -d "$DATA" ]    || (echo "Could not find data directory." >&2    && exit 1)
+
+python3 -- "$SRC/chatbot/train.py" "$DATA"
+
