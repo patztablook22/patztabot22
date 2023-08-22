@@ -1,8 +1,7 @@
 import genbot
-import sys
-import time
+import sys, os, time
 from configparser import ConfigParser
-from gpt2 import Gpt2
+from finetuned_gpt import FinetunedGpt
 
 def parseList(l):
     buff = []
@@ -12,13 +11,14 @@ def parseList(l):
     return buff
 
 class Patztabot(genbot.Genbot):
-    def __init__(self, config):
+    def __init__(self, config, data_dir):
         super().__init__()
         self._chat_whitelist = list(map(int, parseList(config['Chat']['whitelist'])))
         self._jobs_whitelist = list(map(int, parseList(config['Jobs']['whitelist'])))
+        self._data_dir = data_dir
 
     def worker(self):
-        gpt = Gpt2()
+        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model"))
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
@@ -56,7 +56,8 @@ def main(argv):
     config = ConfigParser()
     config.read(argv[1])
     token = open(argv[2]).read().strip()
-    bot = Patztabot(config)
+    data_dir = argv[3]
+    bot = Patztabot(config, data_dir)
 
     bot.run(token)
 
