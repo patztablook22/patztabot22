@@ -17,8 +17,13 @@ class Patztabot(genbot.Genbot):
         self._jobs_whitelist = list(map(int, parseList(config['Jobs']['whitelist'])))
         self._data_dir = data_dir
 
+        @self.slash_command()
+        async def shutdown(ctx):
+            await ctx.respond("Bye!")
+            await self.close()
+
     def worker(self):
-        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model"))
+        #gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model"))
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
@@ -26,7 +31,8 @@ class Patztabot(genbot.Genbot):
                 handler.close()
                 continue
 
-            out = gpt.predict([data])[0]
+            #out = gpt.predict([data])[0]
+            out = data
             #out = out[len(data):]
             handler.write(out)
             handler.close()
