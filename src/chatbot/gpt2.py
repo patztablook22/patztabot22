@@ -1,4 +1,4 @@
-from transformers import pipeline
+#from transformers import pipeline
 
 class Gpt2:
     GEN_PARAMS = {
@@ -15,14 +15,15 @@ class Gpt2:
         model='gpt2-xl'
         model='openai-gpt'
 
-        pl = pipeline('text-generation',
-                      model=model,
-                      **Gpt2.GEN_PARAMS)
-        self._pipeline = pl
+        # pl = pipeline('text-generation',
+                      # model=model,
+                      # **Gpt2.GEN_PARAMS)
+        # self._pipeline = pl
 
 
     def predict(self, prompts):
-        outputs = self._pipeline(prompts, **Gpt2.GEN_PARAMS)
-        gens = [i[0]['generated_text'] for i in outputs]
-        return gens
+        # outputs = self._pipeline(prompts, **Gpt2.GEN_PARAMS)
+        # gens = [i[0]['generated_text'] for i in outputs]
+        outputs = ["pong: " + p for p in prompts]
+        return outputs
 

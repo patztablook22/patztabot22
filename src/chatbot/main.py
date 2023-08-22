@@ -27,7 +27,7 @@ class Patztabot(genbot.Genbot):
                 continue
 
             out = gpt.predict([data])[0]
-            out = out[len(data):]
+            #out = out[len(data):]
             handler.write(out)
             handler.close()
 
@@ -39,12 +39,14 @@ class Patztabot(genbot.Genbot):
             channel = message.channel
             content = []
             async for m in channel.history(limit=3, oldest_first=False): 
+                u = message.author.name
+                u = "patz" if u == "patztabot22" else u
                 c = m.content
                 if c == '_break_': break
-                content.append(f'{message.author}: {c}')
+                content.append(f'[MSTART]{u}[WRITES]{c}[MEND]')
 
             content = content[::-1]
-            content.append('patztabot22: ')
+            content.append('[MSTRART]patz[WRITES]')
             return '\n\n'.join(content)
 
         async for output in self.enqueue(make_prompt):
