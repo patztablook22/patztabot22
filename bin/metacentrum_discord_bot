@@ -24,8 +24,10 @@ if [ ! -d $SCRATCH_VENV ]; then
 
     pip3 install \
         'git+https://github.com/patztablook22/genbot' \
+        torch \
+        accelerate \
         transformers \
-        'tensorflow~=2.11.0' \
+        #'tensorflow~=2.11.0' \
         ||
         (echo "Installing dependencies failed." >&2 && exit 1)
 else
