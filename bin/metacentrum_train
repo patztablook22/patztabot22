@@ -1,7 +1,9 @@
 #!/usr/bin/bash
 
-#PBS -N discord_bot
+#PBS -N train
 #PBS -j oe
+
+export TMPDIR=$SCRATCHDIR
 
 DATADIR=/storage/brno2/home/zavorap/
 PROJECT=$DATADIR/rp-patrik-zavoral
@@ -11,6 +13,8 @@ SCRATCH_VENV=$SCRATCH_PROJECT/venv
 export TMPDIR=$SCRATCHDIR
 
 # add modules
+
+rm -rf $SCRATCHDIR
 
 module add \
     python/python-3.10.4-gcc-8.3.0-ovkjwzd \
@@ -23,9 +27,10 @@ if [ ! -d $SCRATCH_VENV ]; then
     source $SCRATCH_VENV/bin/activate
 
     pip3 install \
-        'git+https://github.com/patztablook22/genbot' \
+        torch \
+        accelerate \
         transformers \
-        'tensorflow~=2.11.0' \
+        #'tensorflow~=2.11.0' \
         ||
         (echo "Installing dependencies failed." >&2 && exit 1)
 else
