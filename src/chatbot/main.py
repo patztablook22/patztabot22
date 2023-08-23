@@ -16,6 +16,7 @@ class Patztabot(genbot.Genbot):
         self._chat_whitelist = list(map(int, parseList(config['Chat']['whitelist'])))
         self._jobs_whitelist = list(map(int, parseList(config['Jobs']['whitelist'])))
         self._data_dir = data_dir
+        self._restart = False
 
         @self.slash_command()
         async def shutdown(ctx):
@@ -26,20 +27,24 @@ class Patztabot(genbot.Genbot):
         async def ping(ctx):
             await ctx.respond("Pong.")
 
+        @self.slash_command()
+        async def restart(ctx):
+            await ctx.respond("Restarting...")
+            self._restart = True
+            await self.close()
+
     def worker(self):
-        #gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model"))
+        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model2"))
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
             if not data:
                 handler.close()
                 continue
-
-            #out = gpt.predict([data])[0]
-            #out = data
-            #out = out[len(data):]
-            time.sleep(1)
-            handler.write("nya-")
+            
+            #handler.write(data)
+            out = gpt.predict([data])[0]
+            handler.write(out)
             handler.close()
 
     async def on_message(self, message):
@@ -49,19 +54,28 @@ class Patztabot(genbot.Genbot):
         async def make_prompt():
             channel = message.channel
             content = []
-            async for m in channel.history(limit=3, oldest_first=False): 
+            l = 0
+            async for m in channel.history(limit=1000, oldest_first=False): 
                 u = message.author.name
                 u = "patz" if u == "patztabot22" else u
                 c = m.content
                 if c == '_break_': break
-                content.append(f'[MSTART]{u}[WRITES]{c}[MEND]')
+                if c.startswith("_skip_"): continue
+                buff = f'[MSTART]{u}[WRITES]{c}[MEND]\n'
+                l += len(buff)
+                if l > 500: break
+                content.append(buff)
 
+            if len(content) == 0: return None
             content = content[::-1]
-            content.append('[MSTRART]patz[WRITES]')
-            return '\n\n'.join(content)
+            content.append('[MSTART]patz[WRITES]')
+            return ''.join(content)
 
         async with message.channel.typing():
             async for output in self.enqueue(make_prompt):
+                end = output.find("[MEND]")
+                #await message.channel.send(f"_skip_ {output}")
+                output = output[:end]
                 await message.channel.send(output)
 
 def main(argv):
@@ -72,6 +86,8 @@ def main(argv):
     bot = Patztabot(config, data_dir)
 
     bot.run(token)
+    if bot._restart:
+        exit(69)
 
 if __name__ == '__main__':
     main(sys.argv)
