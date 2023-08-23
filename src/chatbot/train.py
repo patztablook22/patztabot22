@@ -37,13 +37,11 @@ model.resize_token_embeddings(len(tokenizer))
 
 # Define the training arguments
 training_args = TrainingArguments(
-    output_dir=os.path.join(data_dir, "results2"),
+    output_dir=os.path.join(data_dir, "training"),
     overwrite_output_dir=True,
     num_train_epochs=3,
     per_device_train_batch_size=1,
     per_device_eval_batch_size=1,
-    eval_steps=10,
-    save_steps=10,
     warmup_steps=10
 )
 
