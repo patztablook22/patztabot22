@@ -22,8 +22,12 @@ class Patztabot(genbot.Genbot):
             await ctx.respond("Bye!")
             await self.close()
 
+        @self.slash_command()
+        async def ping(ctx):
+            await ctx.respond("Pong.")
+
     def worker(self):
-        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model"))
+        #gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model"))
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
@@ -31,10 +35,11 @@ class Patztabot(genbot.Genbot):
                 handler.close()
                 continue
 
-            out = gpt.predict([data])[0]
+            #out = gpt.predict([data])[0]
             #out = data
             #out = out[len(data):]
-            handler.write(out)
+            time.sleep(1)
+            handler.write("nya-")
             handler.close()
 
     async def on_message(self, message):
@@ -55,8 +60,9 @@ class Patztabot(genbot.Genbot):
             content.append('[MSTRART]patz[WRITES]')
             return '\n\n'.join(content)
 
-        async for output in self.enqueue(make_prompt):
-            await message.channel.send(output)
+        async with message.channel.typing():
+            async for output in self.enqueue(make_prompt):
+                await message.channel.send(output)
 
 def main(argv):
     config = ConfigParser()
