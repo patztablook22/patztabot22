@@ -38,14 +38,14 @@ def train(data_dir, log):
     print(f"creating datasets ({block_size=})... ", end="", file=log)
     train_dataset = MessengerDataset(
         tokenizer=tokenizer,
-        file_path=train_path,
+        text_path=train_path,
         block_size=block_size,
         special_tokens=special_tokens,
         whitelist=whitelist
     )
     val_dataset = MessengerDataset(
         tokenizer=tokenizer,
-        file_path=val_path,
+        text_path=val_path,
         block_size=block_size,
         special_tokens=special_tokens,
         whitelist=whitelist
@@ -64,8 +64,9 @@ def train(data_dir, log):
     print("preparing training args... ", end="", file=log)
     training_args = TrainingArguments(
         output_dir=os.path.join(data_dir, "training"),
+        logging_dir=os.path.join(data_dir, "training", "logs"),
         overwrite_output_dir=True,
-        num_train_epochs=15,
+        num_train_epochs=2,
         save_steps=50000,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
@@ -89,11 +90,11 @@ def train(data_dir, log):
     print("training finished", file=log)
 
     print("saving tokenizer... ", end="", file=log)
-    tokenizer.save_pretrained(os.path.join(data_dir, "chat_model3"))
+    tokenizer.save_pretrained(os.path.join(data_dir, "chat_model4"))
     print("done", file=log)
 
     print("saving model... ", end="", file=log)
-    model.save_pretrained(os.path.join(data_dir, "chat_model3"))
+    model.save_pretrained(os.path.join(data_dir, "chat_model4"))
     print("done", file=log)
 
 if __name__ == '__main__':

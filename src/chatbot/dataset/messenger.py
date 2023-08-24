@@ -125,4 +125,8 @@ class MessengerDataset(Dataset):
         inputs, mask = self.examples[idx]
         labels = inputs.copy()
         labels[mask == 0] = -100
-        return torch.as_tensor(inputs), torch.as_tensor(labels)
+        return {
+            'input_ids': torch.as_tensor(inputs).squeeze(),
+            'attention_mask': torch.ones(inputs.shape).squeeze(),
+            'labels': torch.as_tensor(labels).squeeze(),
+        }
