@@ -2,6 +2,7 @@ import torch
 import sys
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, TextDataset, DataCollatorForLanguageModeling, TrainingArguments, Trainer
 import os
+from dataset.messenger import MessengerDataset
 
 def main(argv):
     data_dir = argv[1]
@@ -31,15 +32,24 @@ def train(data_dir, log):
     print("done", file=log)
 
     block_size=1024
+    whitelist=['patz']
 
 
     print(f"creating datasets ({block_size=})... ", end="", file=log)
-    train_dataset = TextDataset(tokenizer=tokenizer,
-                                file_path=train_path,
-                                block_size=block_size)
-    val_dataset = TextDataset(tokenizer=tokenizer,
-                              file_path=val_path,
-                              block_size=block_size)
+    train_dataset = MessengerDataset(
+        tokenizer=tokenizer,
+        file_path=train_path,
+        block_size=block_size,
+        special_tokens=special_tokens,
+        whitelist=whitelist
+    )
+    val_dataset = MessengerDataset(
+        tokenizer=tokenizer,
+        file_path=val_path,
+        block_size=block_size,
+        special_tokens=special_tokens,
+        whitelist=whitelist
+    )
     print("done", file=log)
 
     print("creating data collator... ", end="", file=log)
