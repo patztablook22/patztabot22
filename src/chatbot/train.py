@@ -22,7 +22,7 @@ def train(data_dir, log):
         'writes': '[WRITES]',
     }
 
-    model_name = 'gpt2-Large'
+    model_name = 'gpt2-medium'
 
     print(f"creating tokenizer ({model_name=})... ", end="", file=log)
     tokenizer = GPT2Tokenizer.from_pretrained(model_name)
