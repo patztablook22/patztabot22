@@ -10,8 +10,15 @@ def main(argv):
         train(data_dir, log)
 
 def train(data_dir, log):
+
     train_path = os.path.join(data_dir, 'train.txt')
     val_path = os.path.join(data_dir, 'val.txt')
+    model_name = 'gpt2-large'
+    block_size=1024
+    epochs=15
+    bsize=1
+    save_dir = os.path.join(data_dir, "chat_model5")
+
     print("train path:", train_path, file=log)
     print("val path:", val_path, file=log)
 
@@ -23,17 +30,13 @@ def train(data_dir, log):
         'writes': '[WRITES]',
     }
 
-    model_name = 'gpt2-medium'
-
     print(f"creating tokenizer ({model_name=})... ", end="", file=log)
     tokenizer = GPT2Tokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens.values())})
     print("done", file=log)
 
-    block_size=1024
     whitelist=['patz']
-
 
     print(f"creating datasets ({block_size=})... ", end="", file=log)
     train_dataset = MessengerDataset(
@@ -66,10 +69,10 @@ def train(data_dir, log):
         output_dir=os.path.join(data_dir, "training"),
         logging_dir=os.path.join(data_dir, "training", "logs"),
         overwrite_output_dir=True,
-        num_train_epochs=2,
+        num_train_epochs=epochs,
         save_steps=50000,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
+        per_device_train_batch_size=bsize,
+        per_device_eval_batch_size=bsize,
         warmup_steps=10
     )
     print("done", file=log)
@@ -90,11 +93,11 @@ def train(data_dir, log):
     print("training finished", file=log)
 
     print("saving tokenizer... ", end="", file=log)
-    tokenizer.save_pretrained(os.path.join(data_dir, "chat_model4"))
+    tokenizer.save_pretrained(save_dir)
     print("done", file=log)
 
     print("saving model... ", end="", file=log)
-    model.save_pretrained(os.path.join(data_dir, "chat_model4"))
+    model.save_pretrained(save_dir)
     print("done", file=log)
 
 if __name__ == '__main__':
