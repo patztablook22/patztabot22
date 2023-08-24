@@ -1,6 +1,7 @@
-import os
-import json
+import os, json
 from torch.utils.data import Dataset
+import torch
+import numpy as np
 
 def unfuck(s):
     return s.encode('latin1').decode('utf8')
@@ -91,4 +92,37 @@ def generate_corpus(file, conversations, special_tokens):
                 f.write(buff)
             f.write(special_tokens['conversation_end'] + '\n')
 
+class MessengerDataset(Dataset):
+    @classmethod
+    def generate_mask(cls, text, tokenizer, whitelist, special_tokens):
+        mstart = tokenizer(special_tokens['message_start']).input_ids[0]
+        writes = tokenizer(special_tokens['writes']).input_ids[0]
+        mend = tokenizer(special_tokens['message_end']).input_ids[0]
+        mask = np.zeros(len(text))
+        mstarts = np.where(text == mstart)[0]
+        writess = np.where(text == writes)[0]
+        mends = np.where(text == mend)[0]
+        for ms, wr, me in zip(mstarts, writess, mends):
+            nick = tokenizer.decode(text[ms+1 : wr])
+            if nick in whitelist:
+                mask[ms:me] = 1  
+        return mask
+        
+    def __init__(self, text_path, tokenizer, block_size, whitelist, special_tokens):
+        assert os.path.isfile(text_path), f"Input file path {text_path} not found"
+        self.examples = []
+        with open(text_path, encoding='utf-8') as f:
+            text = f.read()
+        tokenized_text = np.array(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text)))
+        mask = MessengerDataset.generate_mask(tokenized_text, tokenizer, whitelist, special_tokens)
+        for i in range(0, len(tokenized_text) - block_size + 1, block_size):
+            self.examples.append((tokenized_text[i:i+block_size], mask[i:i+block_size]))
 
+    def __len__(self):
+        return len(self.examples)
+    
+    def __getitem__(self, idx):
+        inputs, mask = self.examples[idx]
+        labels = inputs.copy()
+        labels[mask == 0] = -100
+        return torch.as_tensor(inputs), torch.as_tensor(labels)
