@@ -13,11 +13,11 @@ def train(data_dir, log):
 
     train_path = os.path.join(data_dir, 'train.txt')
     val_path = os.path.join(data_dir, 'val.txt')
-    model_name = 'gpt2-large'
-    block_size=1024
+    model_name = 'gpt2-xl'
+    block_size=128
     epochs=15
     bsize=1
-    save_dir = os.path.join(data_dir, "chat_model5")
+    save_dir = os.path.join(data_dir, "chat_model6")
 
     print("train path:", train_path, file=log)
     print("val path:", val_path, file=log)
@@ -73,7 +73,8 @@ def train(data_dir, log):
         save_steps=50000,
         per_device_train_batch_size=bsize,
         per_device_eval_batch_size=bsize,
-        warmup_steps=10
+        warmup_steps=10,
+        evaluation_strategy='epoch'
     )
     print("done", file=log)
 

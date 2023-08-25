@@ -2,6 +2,7 @@ import genbot, discord
 import sys, os, time
 from configparser import ConfigParser
 from finetuned_gpt import FinetunedGpt
+import numpy as np
 
 def parseList(l):
     buff = []
@@ -52,7 +53,7 @@ class Patztabot(genbot.Genbot):
         return buff
 
     def worker(self):
-        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model4"))
+        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model5"))
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
@@ -60,8 +61,16 @@ class Patztabot(genbot.Genbot):
                 handler.close()
                 continue
             
+            # first response
             out = gpt.predict([data])[0]
             handler.write(out)
+
+            # try followups
+            if len(out) < 20 and np.random.random() < 0.8:
+                data = data + out + "[MEND]\n[MSTART]patz[WRITES]"
+                out = gpt.predict([data])[0]
+                handler.write(out)
+
             handler.close()
 
     async def on_message(self, message):
