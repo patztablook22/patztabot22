@@ -18,6 +18,7 @@ def train(data_dir, log):
     epochs=15
     bsize=1
     save_dir = os.path.join(data_dir, "chat_model6")
+    whitelist=['patz', "Sběratel Banánů", "Alexander Terziev"]
 
     print("train path:", train_path, file=log)
     print("val path:", val_path, file=log)
@@ -36,7 +37,6 @@ def train(data_dir, log):
     tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens.values())})
     print("done", file=log)
 
-    whitelist=['patz']
 
     print(f"creating datasets ({block_size=})... ", end="", file=log)
     train_dataset = MessengerDataset(

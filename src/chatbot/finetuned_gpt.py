@@ -6,16 +6,20 @@ class FinetunedGpt():
         self._model = GPT2LMHeadModel.from_pretrained(path)
 
     def predict(self, prompts):
+        generation_params = {
+            'do_sample': True,
+            'max_new_tokens': 128,
+            'min_new_tokens': 4,
+            'temperature': 2.5,
+            'top_k': 8,
+            'top_p': 0.6,
+            'repetition_penalty': 0.92,
+        }
+
         mend_token = self._tokenizer.encode("[MEND]")[0]
         inputs = self._tokenizer(prompts, return_tensors='pt', padding=True)
-        output_ids = self._model.generate(**inputs,
-                                          do_sample=True,
-                                          max_new_tokens=128, 
-                                          min_new_tokens=4,
-                                          temperature=1.7,
-                                          top_k=10,
-                                          top_p=0.6,
-                                          repetition_penalty=0.90,
+        output_ids = self._model.generate(**inputs, 
+                                          **generation_params,
                                           eos_token_id=mend_token,
                                           pad_token_id=mend_token)
         generated_ids = [oids[len(iids):] for oids, iids in zip(output_ids, inputs.input_ids)]
