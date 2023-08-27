@@ -14,9 +14,10 @@ def train(data_dir, log):
     train_path = os.path.join(data_dir, 'train.txt')
     val_path = os.path.join(data_dir, 'val.txt')
     model_name = 'gpt2-xl'
+    tokenizer_name = model_name
     block_size=128
-    epochs=15
-    bsize=1
+    epochs=8
+    bsize=8
     save_dir = os.path.join(data_dir, "chat_model6")
     whitelist=['patz', "Sběratel Banánů", "Alexander Terziev"]
 
@@ -32,7 +33,7 @@ def train(data_dir, log):
     }
 
     print(f"creating tokenizer ({model_name=})... ", end="", file=log)
-    tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+    tokenizer = GPT2Tokenizer.from_pretrained(tokenizer_name)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens.values())})
     print("done", file=log)

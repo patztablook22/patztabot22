@@ -14,13 +14,18 @@ def parseList(l):
 class Patztabot(genbot.Genbot):
     def __init__(self, config, data_dir):
         super().__init__()
-        self._chat_whitelist = list(map(int, parseList(config['Chat']['whitelist'])))
-        self._jobs_whitelist = list(map(int, parseList(config['Jobs']['whitelist'])))
+        self._permissions = {
+            'admin': list(map(int, parseList(config['permissions']['admin']))),
+            'chat': list(map(int, parseList(config['permissions']['chat'])))
+        }
         self._data_dir = data_dir
         self._restart = False
 
         @self.slash_command()
         async def shutdown(ctx):
+            if ctx.author.id not in self._permissions['admin']:
+                await ctx.respond("Permission not granted.")
+                return
             await ctx.respond("Bye!")
             await self.close()
 
@@ -30,12 +35,18 @@ class Patztabot(genbot.Genbot):
 
         @self.slash_command()
         async def restart(ctx):
+            if ctx.author.id not in self._permissions['admin']:
+                await ctx.respond("Permission not granted.")
+                return
             await ctx.respond("Restarting...")
             self._restart = True
             await self.close()
 
         @self.slash_command()
         async def test(ctx):
+            if ctx.author.id not in self._permissions['admin']:
+                await ctx.respond("Permission not granted.")
+                return
             test_channels = self.test_channels()
             await ctx.respond(f"Found {len(test_channels)} test channels. Starting...")
             for channel in test_channels:
@@ -43,6 +54,20 @@ class Patztabot(genbot.Genbot):
                 await channel.delete_messages(prev)
             for channel in test_channels:
                 await self.attend(channel)
+
+        permissions = self.slash_group(name='permissions')
+
+        @permissions.subslash()
+        async def list(ctx, 
+                       which: discord.Option(str, choices=list(self._permissions.keys())),
+                       user: discord.User
+                       ):
+            if ctx.author.id not in self._permissions['admin']:
+                await ctx.respond("Permission not granted.")
+                return
+            if which not in self._permissions:
+                await ctx.respond("Unknown permission class.")
+            await ctx.respond(', '.join(self._permissions[which]))
 
     def test_channels(self):
         buff = []
@@ -112,6 +137,8 @@ def main(argv):
     data_dir = argv[3]
     bot = Patztabot(config, data_dir)
     bot.run(token)
+
+    # the outer shell loops this python script as long as it returns 69
     if bot._restart: exit(69)
 
 if __name__ == '__main__':
