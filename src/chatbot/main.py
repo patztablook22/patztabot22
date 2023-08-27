@@ -28,31 +28,31 @@ class Patztabot(genbot.Genbot):
         @self.slash_command()
         async def shutdown(ctx):
             if not self._permissions.admin(ctx.author.id):
-                await ctx.respond("Permission not granted.")
+                await ctx.respond("Permission not granted.", ephemeral=True)
                 return
-            await ctx.respond("Bye!")
+            await ctx.respond("Bye!", ephemeral=True)
             await self.close()
 
         @self.slash_command()
         async def ping(ctx):
-            await ctx.respond("Pong.")
+            await ctx.respond("Pong.", ephemeral=True)
 
         @self.slash_command()
         async def restart(ctx):
             if not self._permissions.admin(ctx.author.id):
-                await ctx.respond("Permission not granted.")
+                await ctx.respond("Permission not granted.", ephemeral=True)
                 return
-            await ctx.respond("Restarting...")
+            await ctx.respond("Restarting...", ephemeral=True)
             self._restart = True
             await self.close()
 
         @self.slash_command()
         async def test(ctx):
             if not self._permissions.admin(ctx.author.id):
-                await ctx.respond("Permission not granted.")
+                await ctx.respond("Permission not granted.", ephemeral=True)
                 return
             test_channels = self.test_channels()
-            await ctx.respond(f"Found {len(test_channels)} test channels. Starting...")
+            await ctx.respond(f"Found {len(test_channels)} test channels. Starting...", ephemeral=True)
             for channel in test_channels:
                 prev = [msg async for msg in channel.history() if msg.author == self.user]
                 await channel.delete_messages(prev)
@@ -65,8 +65,8 @@ class Patztabot(genbot.Genbot):
         @permissions.command(name='get')
         async def permGet(ctx, user: discord.User):
             sl = self._permissions.get_saved_level(user.id)
-            if sl == -1: await ctx.respond(f"Default ({self._permissions.levels[self._permissions.default]}).")
-            else: await ctx.respond(self._permissions.levels[sl].capitalize() + ".")
+            if sl == -1: await ctx.respond(f"Default ({self._permissions.levels[self._permissions.default]}).", ephemeral=True)
+            else: await ctx.respond(self._permissions.levels[sl].capitalize() + ".", ephemeral=True)
 
         async def get_possible_levels(ctx: discord.AutocompleteContext):
             if 'user' not in ctx.options: return []
@@ -86,23 +86,23 @@ class Patztabot(genbot.Genbot):
             author_level = self._permissions.get_level(ctx.author.id)
             target_level = self._permissions.get_level(user.id)
             if target_level >= author_level:
-                    await ctx.respond("Permission not granted.")
+                    await ctx.respond("Permission not granted.", ephemeral=True)
                     return
             if level in self._permissions.levels:
                 l = self._permissions.levels.index(level)
                 if l >= author_level:
-                    await ctx.respond("Permission not granted.")
+                    await ctx.respond("Permission not granted.", ephemeral=True)
                     return
                 self._permissions.set(user.id, l)
             elif level == 'default':
                 if self._permissions.default >= author_level:
-                    await ctx.respond("Permission not granted.")
+                    await ctx.respond("Permission not granted.", ephemeral=True)
                     return
                 self._permissions.unset(user.id)
             else:
-                await ctx.respond("Unknown permission level.")
+                await ctx.respond("Unknown permission level.", ephemeral=True)
                 return
-            await ctx.respond("Permission level set successfully.")
+            await ctx.respond("Permission level set successfully.", ephemeral=True)
 
     def test_channels(self):
         buff = []
