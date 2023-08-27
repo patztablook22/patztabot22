@@ -2,28 +2,32 @@ import genbot, discord
 import sys, os, time
 from configparser import ConfigParser
 from finetuned_gpt import FinetunedGpt
+from permission_hierarchy import PermissionHierarchy
 import numpy as np
 
-def parseList(l):
-    buff = []
+def parseIntDict(l):
+    buff = {}
     for a in l.split('\n'): 
-        a = a.strip()
-        if a: buff.append(a)
+        a = a.strip().split(' ')
+        if len(a) != 2: continue
+        buff[int(a[0])] = int(a[1])
     return buff
 
 class Patztabot(genbot.Genbot):
     def __init__(self, config, data_dir):
         super().__init__()
-        self._permissions = {
-            'admin': list(map(int, parseList(config['permissions']['admin']))),
-            'chat': list(map(int, parseList(config['permissions']['chat'])))
+        permission_config = {
+            'default': int(config['permissions']['default']),
+            'saved': parseIntDict(config['permissions']['saved'])
         }
+        self._permissions = PermissionHierarchy(permission_config, 
+                                                os.path.join(data_dir, 'permissions.cache'))
         self._data_dir = data_dir
         self._restart = False
 
         @self.slash_command()
         async def shutdown(ctx):
-            if ctx.author.id not in self._permissions['admin']:
+            if not self._permissions.admin(ctx.author.id):
                 await ctx.respond("Permission not granted.")
                 return
             await ctx.respond("Bye!")
@@ -35,7 +39,7 @@ class Patztabot(genbot.Genbot):
 
         @self.slash_command()
         async def restart(ctx):
-            if ctx.author.id not in self._permissions['admin']:
+            if not self._permissions.admin(ctx.author.id):
                 await ctx.respond("Permission not granted.")
                 return
             await ctx.respond("Restarting...")
@@ -44,7 +48,7 @@ class Patztabot(genbot.Genbot):
 
         @self.slash_command()
         async def test(ctx):
-            if ctx.author.id not in self._permissions['admin']:
+            if not self._permissions.admin(ctx.author.id):
                 await ctx.respond("Permission not granted.")
                 return
             test_channels = self.test_channels()
@@ -55,19 +59,50 @@ class Patztabot(genbot.Genbot):
             for channel in test_channels:
                 await self.attend(channel)
 
-        permissions = self.slash_group(name='permissions')
+        permissions = self.create_group(name='permissions')
 
-        @permissions.subslash()
-        async def list(ctx, 
-                       which: discord.Option(str, choices=list(self._permissions.keys())),
-                       user: discord.User
-                       ):
-            if ctx.author.id not in self._permissions['admin']:
-                await ctx.respond("Permission not granted.")
+
+        @permissions.command(name='get')
+        async def permGet(ctx, user: discord.User):
+            sl = self._permissions.get_saved_level(user.id)
+            if sl == -1: await ctx.respond(f"Default ({self._permissions.levels[self._permissions.default]}).")
+            else: await ctx.respond(self._permissions.levels[sl].capitalize() + ".")
+
+        async def get_possible_levels(ctx: discord.AutocompleteContext):
+            if 'user' not in ctx.options: return []
+            target_id = int(ctx.options['user'])
+            author_id = ctx.interaction.user.id
+            target_level = self._permissions.get_level(target_id)
+            author_level = self._permissions.get_level(author_id)
+            if target_level >= author_level: return []
+            buff = self._permissions.levels[:author_level]
+            if self._permissions.default < author_level: buff.append('default')
+            return buff
+
+        @permissions.command(name='set')
+        async def permSet(ctx, 
+                          user: discord.User, 
+                          level: discord.Option(str, autocomplete=discord.utils.basic_autocomplete(get_possible_levels))):
+            author_level = self._permissions.get_level(ctx.author.id)
+            target_level = self._permissions.get_level(user.id)
+            if target_level >= author_level:
+                    await ctx.respond("Permission not granted.")
+                    return
+            if level in self._permissions.levels:
+                l = self._permissions.levels.index(level)
+                if l >= author_level:
+                    await ctx.respond("Permission not granted.")
+                    return
+                self._permissions.set(user.id, l)
+            elif level == 'default':
+                if self._permissions.default >= author_level:
+                    await ctx.respond("Permission not granted.")
+                    return
+                self._permissions.unset(user.id)
+            else:
+                await ctx.respond("Unknown permission level.")
                 return
-            if which not in self._permissions:
-                await ctx.respond("Unknown permission class.")
-            await ctx.respond(', '.join(self._permissions[which]))
+            await ctx.respond("Permission level set successfully.")
 
     def test_channels(self):
         buff = []
@@ -99,7 +134,7 @@ class Patztabot(genbot.Genbot):
             handler.close()
 
     async def on_message(self, message):
-        if message.author.id not in self._chat_whitelist:
+        if not self._permissions.chat(message.author.id):
             return
         if isinstance(message.channel, discord.DMChannel) \
                 or self.user in message.mentions:

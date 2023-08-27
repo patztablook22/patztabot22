@@ -1,9 +1,9 @@
 class FinetunedGpt():
     def __init__(self, path):
         pass
-        from transformers import GPT2LMHeadModel, GPT2Tokenizer
-        self._tokenizer = GPT2Tokenizer.from_pretrained(path)
-        self._model = GPT2LMHeadModel.from_pretrained(path)
+        # from transformers import GPT2LMHeadModel, GPT2Tokenizer
+        # self._tokenizer = GPT2Tokenizer.from_pretrained(path)
+        # self._model = GPT2LMHeadModel.from_pretrained(path)
 
     def predict(self, prompts):
         generation_params = {
