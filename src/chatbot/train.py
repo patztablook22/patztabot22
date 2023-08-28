@@ -15,11 +15,13 @@ def train(data_dir, log):
     val_path = os.path.join(data_dir, 'val.txt')
     model_name = 'gpt2-xl'
     tokenizer_name = model_name
-    block_size=128
-    epochs=8
-    bsize=8
-    save_dir = os.path.join(data_dir, "chat_model6")
-    whitelist=['patz', "Sběratel Banánů", "Alexander Terziev"]
+    block_size = lambda i: np.random.choice([32, 48, 64, 96, 96, 128, 128, 192, 256, 512, 1024])
+    epochs = 8
+    bsize = 8
+    save_dir = os.path.join(data_dir, "chat_model7")
+    whitelist = ["patz", "Sběratel Banánů", "Alexander Terziev",
+                 "Martin McNickle", "Jan Zasadil", "Filip Kastl",
+                 "Jaroslav Žukov", "Robin Stringer", "Jakub Tichanek"]
 
     print("train path:", train_path, file=log)
     print("val path:", val_path, file=log)

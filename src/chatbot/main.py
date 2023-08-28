@@ -113,7 +113,7 @@ class Patztabot(genbot.Genbot):
         return buff
 
     def worker(self):
-        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model5"))
+        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model6"))
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
@@ -125,11 +125,11 @@ class Patztabot(genbot.Genbot):
             out = gpt.predict([data])[0]
             handler.write(out)
 
-            # try followups
-            if len(out) < 20 and np.random.random() < 0.8:
-                data = data + out + "[MEND]\n[MSTART]patz[WRITES]"
-                out = gpt.predict([data])[0]
-                handler.write(out)
+            ## try followups
+            #if len(out) < 20 and np.random.random() < 0.8:
+            #    data = data + out + "[MEND]\n[MSTART]patz[WRITES]"
+            #    out = gpt.predict([data])[0]
+            #    handler.write(out)
 
             handler.close()
 
