@@ -31,3 +31,29 @@ Subtasks for the RP will possibly include:
 - testing the bot manually or automatically on a set of scenarios (introduction, small talk, discussion, ...)
 
 The Bachelor thesis is expected to focus on what is currently called "AI alignment", especially on aligning pretrained LLMs for downstream tasks, e.g. using parameter efficient fine tuning (PEFT) techniaues, prompt tuning, RLHF, etc.
+
+
+# Status
+
+- Discord bot
+    - prompt pipeline feeding the model message history, 
+      triggered automatically in DMs or when pinged in public text channels
+    - permission hierarchy with slash command integration (`/permissions`)
+      (owner, admin, mod, chat, ignored); 
+      cached and restored when restarting the bot
+    - automatic testing mode triggered by a slash command (`/test`);
+      test messages taken from automatically selected test channels 
+      (any visible text channels with the prefix `patztabot22-test-`)
+    - sped up generated response time from approximately 30s to 3s
+      (thanks to custom generation parameters and using separate huggingface 
+       APIs for tokenization and generation)
+- Models
+    - fine-tuned several models (openai-gpt, ..., gpt2-xl) on about 4 years
+      of preprocessed messenger data
+    - non-zero loss only on whitelisted users (me and a few others)
+        - other users only provide generation context 
+          without being part of the generated distribution itself
+    - experimented with a few prompt and generation modifications, 
+      notably stopping conditions and sampling parameters, interestingly
+      slight "repetition bonus" seems to help maintaining conversation flow
+
