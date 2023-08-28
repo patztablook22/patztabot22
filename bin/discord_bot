@@ -10,7 +10,7 @@ DATA=$PROJECT/data
 [ -d "$SRC" ]    || (echo "Could not find src directory." >&2    && exit 1)
 
 while :; do
-    python3 -- "$SRC/chatbot/main.py" \
+    python3 -- "$SRC/discord_bot.py" \
         "$CONFIG/discord_config.ini" \
         "$CONFIG/discord_token.txt" \
         "$DATA"

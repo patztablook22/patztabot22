@@ -2,7 +2,6 @@ papers/
 .vim/
 __pycache__/
 .ipynb_checkpoints/
-discord_config.json
-discord_token.txt
 data/
 log/
+config/
