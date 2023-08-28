@@ -7,8 +7,13 @@ def unfuck(s):
     return s.encode('latin1').decode('utf8')
 
 class Conversation:
-    def __init__(self, root):
-        self._root = root
+    def __init__(self, root=None):
+        if root is None:
+            self.title = None
+            self.participants = set()
+            self.messages = []
+            return
+
         jsons = list(filter(lambda x: x.endswith('json'), os.listdir(root)))
 
         participants = set()
@@ -92,6 +97,30 @@ def generate_corpus(file, conversations, special_tokens):
                 f.write(buff)
             f.write(special_tokens['conversation_end'] + '\n')
 
+def merge_adjacent_messages(conversation, time_tollerance_s):
+    new = Conversation()
+    new.title = conversation.title
+    new.participants = conversation.participants
+    
+    m0 = None
+    for m in conversation:
+        if m0 is None or m0['sender_name'] != m['sender_name'] \
+                or 'content' not in m or 'content' not in m0 \
+                or (m['timestamp_ms'] - m0['timestamp_ms']) / 1000 > time_tollerance_s:
+            if m0 is not None:
+                new.messages.append(m0)
+            m0 = dict(m)
+        else:
+            m0['content'] += "\n" + m['content']
+    return new
+
+def filter_messages_by_content(conversation, predicate):
+    new = Conversation()
+    new.title = conversation.title
+    new.participants = conversation.participants
+    new.messages = list(filter(lambda m: predicate(m.get('content', None)), conversation.messages))
+    return new
+
 class MessengerDataset(Dataset):
     @classmethod
     def generate_mask(cls, text, tokenizer, whitelist, special_tokens):
@@ -115,8 +144,15 @@ class MessengerDataset(Dataset):
             text = f.read()
         tokenized_text = np.array(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text)))
         mask = MessengerDataset.generate_mask(tokenized_text, tokenizer, whitelist, special_tokens)
-        for i in range(0, len(tokenized_text) - block_size + 1, block_size):
-            self.examples.append((tokenized_text[i:i+block_size], mask[i:i+block_size]))
+        begin = 0
+        i = 0
+        while begin < len(tokenized_text):
+            if isinstance(block_size, int):
+                bs = block_size
+            else:
+                bs = block_size(i)
+            self.examples.append((tokenized_text[begin : begin + bs], mask[begin : begin + bs]))
+            begin += bs
 
     def __len__(self):
         return len(self.examples)
