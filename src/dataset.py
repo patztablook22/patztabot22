@@ -147,7 +147,7 @@ class ChatDataset(Dataset):
         with open(text_path, encoding='utf-8') as f:
             text = f.read()
         tokenized_text = np.array(tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text)))
-        mask = MessengerDataset.generate_mask(tokenized_text, tokenizer, whitelist, special_tokens)
+        mask = ChatDataset.generate_mask(tokenized_text, tokenizer, whitelist, special_tokens)
         begin = 0
         i = 0
         while begin < len(tokenized_text):
