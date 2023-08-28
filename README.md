@@ -1,9 +1,15 @@
 # RP Patrik Zavoral
 
+out-of-the-box:
 - `notebook` - interactive notebooks 
 - `src` - training and deployment logic
 - `bin` - entry scripts (always use these instead of running `src` files directly)
 
+not a part of the repo:
+- `data` - datasets, models, cache, ...
+- `config`
+  - `discord_token.txt` - secret Discord bot token
+  - `discord_config.ini` - default Discord bot permissions etc.
 
 ## RP specification
 
