@@ -125,7 +125,7 @@ def filter_messages_by_content(conversation, predicate):
     new.messages = list(filter(lambda m: predicate(m.content), conversation.messages))
     return new
 
-class MessengerDataset(Dataset):
+class ChatDataset(Dataset):
     @classmethod
     def generate_mask(cls, text, tokenizer, whitelist, special_tokens):
         mstart = tokenizer(special_tokens['message_start']).input_ids[0]
