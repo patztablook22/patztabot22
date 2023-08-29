@@ -59,8 +59,20 @@ class Patztabot(genbot.Genbot):
             for channel in test_channels:
                 await self.attend(channel)
 
-        permissions = self.create_group(name='permissions')
+        @self.slash_command()
+        async def generate(ctx, prompt: str):
+            if not self._permissions.mod(ctx.author.id):
+                await ctx.respond("Permission not granted.", ephemeral=True)
+                return
 
+            await ctx.defer(ephemeral=True)
+            first = True
+            async for output in self.enqueue(lambda: prompt):
+                if first: output = f"[{prompt}]{output}"
+                first = False
+                await ctx.respond(output, ephemeral=True)
+
+        permissions = self.create_group(name='permissions')
 
         @permissions.command(name='get')
         async def permGet(ctx, user: discord.User):

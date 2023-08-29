@@ -16,9 +16,9 @@ def train(data_dir, log):
     val_path = os.path.join(data_dir, 'val.txt')
     model_name = 'gpt2-xl'
     tokenizer_name = model_name
-    block_size = lambda i: np.random.choice([32, 48, 64, 96, 96, 128, 128, 192, 256, 512, 1024])
-    epochs = 8
-    bsize = 8
+    block_size = lambda i: np.random.choice([32, 48, 64, 96, 96, 128, 128, 192, 256, 512])
+    epochs = 4
+    bsize = 2
     save_dir = os.path.join(data_dir, "chat_model7")
     whitelist = ["patz", "Sběratel Banánů", "Alexander Terziev",
                  "Martin McNickle", "Jan Zasadil", "Filip Kastl",
@@ -78,7 +78,7 @@ def train(data_dir, log):
         per_device_train_batch_size=bsize,
         per_device_eval_batch_size=bsize,
         warmup_steps=10,
-        evaluation_strategy='epoch'
+        #evaluation_strategy='epoch'
     )
     print("done", file=log)
 
@@ -88,7 +88,7 @@ def train(data_dir, log):
         args=training_args,
         data_collator=data_collator,
         train_dataset=train_dataset,
-        eval_dataset=val_dataset
+        #eval_dataset=val_dataset
     )
     print("done", file=log)
 

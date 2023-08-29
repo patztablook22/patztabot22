@@ -150,13 +150,22 @@ class ChatDataset(Dataset):
         mask = ChatDataset.generate_mask(tokenized_text, tokenizer, whitelist, special_tokens)
         begin = 0
         i = 0
+        longest = 0
         while begin < len(tokenized_text):
             if isinstance(block_size, int):
                 bs = block_size
             else:
                 bs = block_size(i)
             self.examples.append((tokenized_text[begin : begin + bs], mask[begin : begin + bs]))
+            longest = max(longest, bs)
             begin += bs
+
+        pt = tokenizer(tokenizer.pad_token).input_ids[0]
+        for i in range(len(self.examples)):
+            t, m = self.examples[i]
+            t = np.pad(t, (0, longest - len(t)), constant_values=pt)
+            m = np.pad(m, (0, longest - len(m)), constant_values=0)
+            self.examples[i] = (t,m)
 
     def __len__(self):
         return len(self.examples)
