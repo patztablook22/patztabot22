@@ -89,17 +89,35 @@ def load_messenger_conversations(path):
                   + [os.path.join(path, 'archived_threads', a) for a in archive]
     return [load_messenger_conversation(c) for c in conversations]
 
-def generate_corpus(file, conversations, special_tokens):
+def generate_corpus(file, conversations, special_tokens, break_tollerance_s):
+    def dump_conversation(file, conversation):
+        def continues(m0, m):
+            if m0 is None or m0.author != m.author \
+                    or not m0.content or not m.content \
+                    or (m.timestamp_ms - m0.timestamp_ms) / 1000 > break_tollerance_s:
+                        return False
+            else:
+                return True
+
+        file.write(special_tokens['conversation_start'] + '\n')
+        m0 = None
+        for m in conversation:
+            if continues(m0, m):
+                file.write(special_tokens['breakpoint'] + '\n' + m.content)
+            else:
+                if m0 is not None:
+                    file.write(special_tokens['message_end'] + special_tokens['breakpoint'] + '\n')
+                if m.content:
+                    file.write(special_tokens['message_start'] + m.author + \
+                            special_tokens['writes'] + m.content)
+            m0 = m
+
+        file.write(special_tokens['message_end'] + special_tokens['breakpoint'] + \
+            '\n' + special_tokens['conversation_end'] + '\n')
+
     with open(file, 'w') as f:
-        for conv in conversations:
-            f.write(special_tokens['conversation_start'] + '\n')
-            for msg in conv:
-                if not msg.content: continue
-                buff = special_tokens['message_start'] + msg.author \
-                     + special_tokens['writes'] + msg.content \
-                     + special_tokens['message_end'] + '\n'
-                f.write(buff)
-            f.write(special_tokens['conversation_end'] + '\n')
+        for c in conversations:
+            dump_conversation(f, c)
 
 def merge_adjacent_messages(conversation, time_tollerance_s):
     new = Conversation()
@@ -138,7 +156,7 @@ class ChatDataset(Dataset):
         for ms, wr, me in zip(mstarts, writess, mends):
             nick = tokenizer.decode(text[ms+1 : wr])
             if nick in whitelist:
-                mask[ms:me] = 1  
+                mask[ms:me+1] = 1  
         return mask
         
     def __init__(self, text_path, tokenizer, block_size, whitelist, special_tokens):
