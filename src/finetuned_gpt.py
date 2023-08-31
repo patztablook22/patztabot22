@@ -16,12 +16,12 @@ class FinetunedGpt():
             'repetition_penalty': 0.95,
         }
 
-        mend_token = self._tokenizer.encode("[MEND]")[0]
+        eos_token = self._tokenizer.encode("[BREAK]")[0]
         inputs = self._tokenizer(prompts, return_tensors='pt', padding=True)
         output_ids = self._model.generate(**inputs, 
                                           **generation_params,
-                                          eos_token_id=mend_token,
-                                          pad_token_id=mend_token)
+                                          eos_token_id=eos_token,
+                                          pad_token_id=eos_token)
         generated_ids = [oids[len(iids):] for oids, iids in zip(output_ids, inputs.input_ids)]
-        responses = [self._tokenizer.decode(a, skip_special_tokens=True) for a in generated_ids]
+        responses = [self._tokenizer.decode(a, skip_special_tokens=False) for a in generated_ids]
         return responses

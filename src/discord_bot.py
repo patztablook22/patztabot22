@@ -125,7 +125,7 @@ class Patztabot(genbot.Genbot):
         return buff
 
     def worker(self):
-        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model6"))
+        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model8"))
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
@@ -133,15 +133,14 @@ class Patztabot(genbot.Genbot):
                 handler.close()
                 continue
             
-            # first response
-            out = gpt.predict([data])[0]
-            handler.write(out)
-
-            ## try followups
-            #if len(out) < 20 and np.random.random() < 0.8:
-            #    data = data + out + "[MEND]\n[MSTART]patz[WRITES]"
-            #    out = gpt.predict([data])[0]
-            #    handler.write(out)
+            while True:
+                out = gpt.predict([data])[0].strip().split('[BREAK]')[0]
+                if '[MEND]' in out:
+                    out = out.split('[MEND]')[0]
+                    if out: handler.write(out)
+                    break
+                if out: handler.write(out)
+                data += out
 
             handler.close()
 
@@ -157,12 +156,11 @@ class Patztabot(genbot.Genbot):
             content = []
             l = 0
             async for m in channel.history(limit=1000, oldest_first=False): 
-                u = m.author.name
+                u = 'you' if m.author == self.user else m.author.name
                 c = m.content
                 if c == '_break_': break
                 if c.startswith("_skip_"): continue
-                buff = f'[MSTART]{u}[WRITES]{c}[MEND]\n'.replace(
-                        self.user.name, 'patz')
+                buff = f'[MSTART]{u}[WRITES]{c}[MEND][BREAK]\n'
                 l += len(buff)
                 if l > 500: break
                 content.append(buff)
@@ -170,7 +168,7 @@ class Patztabot(genbot.Genbot):
 
             if len(content) == 0: return None
             content = content[::-1]
-            content.append('[MSTART]patz[WRITES]')
+            content.append('[MSTART]you[WRITES]')
             return ''.join(content)
 
         async with channel.typing():

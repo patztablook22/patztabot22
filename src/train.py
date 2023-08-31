@@ -14,13 +14,15 @@ def train(data_dir, log):
 
     train_path = os.path.join(data_dir, 'train.txt')
     val_path = os.path.join(data_dir, 'val.txt')
-    model_name = 'gpt2-xl'
+    model_name = os.path.join(data_dir, 'chat_model8')
     tokenizer_name = model_name
     block_size = lambda i: np.random.choice([32, 48, 64, 96, 96, 128, 128, 192, 256, 512])
+    block_size = lambda i: np.random.choice([64, 128, 256])
     epochs = 4
-    bsize = 2
-    save_dir = os.path.join(data_dir, "chat_model7")
-    whitelist = ["patz", "Sběratel Banánů", "Alexander Terziev",
+    bsize = 4
+    save_dir = os.path.join(data_dir, "chat_model9")
+    whitelist = ["patz", "Patztablook TwentyTwo", "you",
+                 "Sběratel Banánů", "Alexander Terziev",
                  "Martin McNickle", "Jan Zasadil", "Filip Kastl",
                  "Jaroslav Žukov", "Robin Stringer", "Jakub Tichanek"]
 
@@ -31,6 +33,7 @@ def train(data_dir, log):
         'conversation_start': '[CSTART]',
         'conversation_end': '[CEND]',
         'message_start': '[MSTART]',
+        'breakpoint': '[BREAK]',
         'message_end': '[MEND]',
         'writes': '[WRITES]',
     }
