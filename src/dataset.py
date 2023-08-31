@@ -1,62 +1,15 @@
-import os, json
+import os, json, time, re
 from torch.utils.data import Dataset
 import torch
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
 
-def unfuck(s):
-    return s.encode('latin1').decode('utf8')
-
 @dataclass
 class Message:
     author: str
-    timestamp_ms: int
+    timestamp: float
     content: Optional[str]
-
-def load_messenger_conversation(root):
-    jsons = list(filter(lambda x: x.endswith('json'), os.listdir(root)))
-    conv = Conversation()
-
-    messages = []
-    for j in jsons:
-        with open(os.path.join(root, j), 'r') as f:
-            data = json.load(f)
-
-        for p in data['participants']:
-            p['name'] = unfuck(p['name'])
-
-        for m in data['messages']:
-            author = unfuck(m['sender_name'])
-            if 'content' in m:
-                content = unfuck(m['content'])
-            else:
-                content = None
-            timestamp_ms = m['timestamp_ms']
-            messages.append(Message(author, timestamp_ms, content))
-
-        for p in data['participants']:
-            conv.participants.add(p['name'])
-
-        data['title'] = unfuck(data['title'])
-        conv.title = data['title']
-
-    conv.messages = sorted(messages, key=lambda m: m.timestamp_ms)
-    return conv
-
-def rename_conversation_user(conversation, user_original, user_target):
-    c = Conversation()
-    c.title = conversation.title.replace(user_original, user_target)
-    for p in conversation.participants:
-        c.participants.add(user_target if p == user_original else p)
-    for m in conversation.messages:
-        author = user_target if m.author == user_original else m.author
-        if m.content is None:
-            content = None
-        else:
-            content = m.content.replace(user_original, user_target)
-        c.messages.append(Message(author, m.timestamp_ms, content))
-    return c
 
 class Conversation:
     def __init__(self, title=None, participants=None, messages=None):
@@ -82,6 +35,119 @@ class Conversation:
     def __repr__(self):
         return f'Conversation "{self.title}"'
 
+    def head(self, n=10):
+        Conversation.dump(self.messages[:n])
+
+    def example(self, n=10):
+        begin = np.random.randint(0, max(len(self.messages) - n, 1))
+        Conversation.dump(self.messages[begin : begin + n])
+
+    @classmethod
+    def dump(cls, messages, line_width=96):
+        name_pad = max([len(m.author) for m in messages])
+        w = line_width - name_pad
+        for m in messages:
+            print(m.author.rjust(name_pad) + ': ', end='')
+            first = True
+            if not m.content:
+                print()
+                continue
+            for line in m.content.splitlines():
+                continues = False
+                for begin in range(0, len(line), w):
+                    l = line[begin : begin + w]
+                    if first:
+                        first = False
+                    elif continues:
+                        print(' ' * (name_pad - 2) + '... ', end='')
+                    else:
+                        print(' ' * (name_pad + 2), end='')
+                    print(l)
+                    continues = True
+
+def load_simulated_conversations(root):
+    cs = []
+    for file in os.listdir(root):
+        cs.append(load_simulated_conversation(os.path.join(root, file)))
+    return cs
+
+def mark_avoid(conversation, pattern, special_tokens):
+    tok = special_tokens['avoid']
+    def ma(message):
+        if not message.content: return message
+        newc = re.sub(rf'(?P<avoid>{pattern})',
+                      rf'{tok}\g<avoid>',
+                      message.content)
+        if newc == message.content:
+            return message
+        else:
+            return Message(message.author, message.timestamp, newc)
+
+    return Conversation(conversation.title,
+                        conversation.participants,
+                        list(map(ma, conversation.messages)))
+
+def load_simulated_conversation(path):
+    c = Conversation(title=f"{os.path.basename(path).split('.')[0]} (simulated)")
+    t = time.time()
+    with open(path) as f:
+        lines = f.readlines()
+    for line in lines:
+        author = line.split(':')[0].strip()
+        content = ':'.join(line.split(':')[1:]).strip()
+        m = Message(author, t, content)
+        t += 5
+        c.participants.add(author)
+        c.messages.append(m)
+    return c
+
+def unfuck(s):
+    return s.encode('latin1').decode('utf8')
+
+def load_messenger_conversation(root):
+    jsons = list(filter(lambda x: x.endswith('json'), os.listdir(root)))
+    conv = Conversation()
+
+    messages = []
+    for j in jsons:
+        with open(os.path.join(root, j), 'r') as f:
+            data = json.load(f)
+
+        for p in data['participants']:
+            p['name'] = unfuck(p['name'])
+
+        for m in data['messages']:
+            author = unfuck(m['sender_name'])
+            if 'content' in m:
+                content = unfuck(m['content'])
+            else:
+                content = None
+            timestamp = m['timestamp_ms'] / 1000
+            messages.append(Message(author, timestamp, content))
+
+        for p in data['participants']:
+            conv.participants.add(p['name'])
+
+        data['title'] = unfuck(data['title'])
+        conv.title = data['title']
+
+    conv.messages = sorted(messages, key=lambda m: m.timestamp)
+    return conv
+
+def rename_conversation_user(conversation, user_original, user_target):
+    c = Conversation()
+    c.title = conversation.title.replace(user_original, user_target)
+    for p in conversation.participants:
+        c.participants.add(user_target if p == user_original else p)
+    for m in conversation.messages:
+        author = user_target if m.author == user_original else m.author
+        if m.content is None:
+            content = None
+        else:
+            content = m.content.replace(user_original, user_target)
+        c.messages.append(Message(author, m.timestamp, content))
+    return c
+
 def load_messenger_conversations(path):
     inbox = os.listdir(os.path.join(path, 'inbox'))
     archive = os.listdir(os.path.join(path, 'archived_threads'))
@@ -94,7 +160,7 @@ def generate_corpus(file, conversations, special_tokens, break_tollerance_s):
         def continues(m0, m):
             if m0 is None or m0.author != m.author \
                     or not m0.content or not m.content \
-                    or (m.timestamp_ms - m0.timestamp_ms) / 1000 > break_tollerance_s:
+                    or m.timestamp - m0.timestamp > break_tollerance_s:
                         return False
             else:
                 return True
@@ -128,10 +194,10 @@ def merge_adjacent_messages(conversation, time_tollerance_s):
     for m in conversation:
         if m0 is None or m0.author != m.author \
                 or not m0.content or not m.content \
-                or (m.timestamp_ms - m0.timestamp_ms) / 1000 > time_tollerance_s:
+                or m.timestamp - m0.timestamp > time_tollerance_s:
             if m0 is not None:
                 new.messages.append(m0)
-            m0 = Message(m.author, m.timestamp_ms, m.content)
+            m0 = Message(m.author, m.timestamp, m.content)
         else:
            m0.content += "\n" + m.content
     return new
