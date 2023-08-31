@@ -8,7 +8,14 @@ DATA=$PROJECT/data
 
 [ -d "$CONFIG" ] || (echo "Could not find config directory." >&2 && exit 1)
 [ -d "$SRC" ]    || (echo "Could not find src directory." >&2    && exit 1)
-[ -d "$DATA" ]    || (echo "Could not find data directory." >&2    && exit 1)
+[ -d "$DATA" ]   || (echo "Could not find data directory." >&2   && exit 1)
 
-python3 -- "$SRC/train.py" "$DATA"
+while :; do
+    python3 -- "$SRC/train.py" \
+        "$CONFIG/shellbot_config.ini" \
+        "$CONFIG/shellbot_token.txt" \
+        "$DATA"
+
+    [ "$?" -eq 69 ] || break
+done
 

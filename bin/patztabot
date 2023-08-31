@@ -8,11 +8,12 @@ DATA=$PROJECT/data
 
 [ -d "$CONFIG" ] || (echo "Could not find config directory." >&2 && exit 1)
 [ -d "$SRC" ]    || (echo "Could not find src directory." >&2    && exit 1)
+[ -d "$DATA" ]   || (echo "Could not find data directory." >&2   && exit 1)
 
 while :; do
-    python3 -- "$SRC/discord_bot.py" \
-        "$CONFIG/discord_config.ini" \
-        "$CONFIG/discord_token.txt" \
+    python3 -- "$SRC/patztabot.py" \
+        "$CONFIG/patztabot_config.ini" \
+        "$CONFIG/patztabot_token.txt" \
         "$DATA"
 
     [ "$?" -eq 69 ] || break

@@ -34,7 +34,7 @@ else
     source $SCRATCH_VENV/bin/activate
 fi
 
-$PROJECT/bin/discord_bot
+$PROJECT/bin/patztabot
 
 #rm -rf $SCRATCHDIR/*
 

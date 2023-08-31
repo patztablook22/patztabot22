@@ -141,10 +141,7 @@ def rename_conversation_user(conversation, user_original, user_target):
         c.participants.add(user_target if p == user_original else p)
     for m in conversation.messages:
         author = user_target if m.author == user_original else m.author
-        if m.content is None:
-            content = None
-        else:
-            content = m.content.replace(user_original, user_target)
+        content = None if m.content is None else m.content.replace(user_original, user_target)
         c.messages.append(Message(author, m.timestamp, content))
     return c
 
@@ -184,6 +181,42 @@ def generate_corpus(file, conversations, special_tokens, break_tollerance_s):
     with open(file, 'w') as f:
         for c in conversations:
             dump_conversation(f, c)
+
+def split(conversation, message_limit=None, chunks=None):
+    result = []
+    if message_limit is not None:
+        for begin in range(0, len(conversation), message_limit):
+            c = Conversation(conversation.title, 
+                             conversation.participants,
+                             conversation.messages[begin : begin + message_limit])
+            result.append(c)
+
+    elif chunks is not None:
+        begin = 0
+        for i in range(chunks):
+            size = len(conversation) // chunks
+            if i < len(conversation) % chunks: size += 1
+            c = Conversation(conversation.title,
+                             conversation.participants,
+                             conversation.message[begin : begin + size])
+            result.append(c)
+
+    return result
+
+
+def sample_names(conversation, originals, targets, n=None):
+    if isinstance(originals, str): originals = [originals]
+    result = []
+    for _ in range(n if n is not None else 1):
+        ts = set(targets)
+        c = conversation
+        for original in originals:
+            target = np.random.choice(list(ts))
+            ts.remove(target)
+            c = rename_conversation_user(c, original, target)
+        result.append(c)
+
+    return result[0] if n is None else result
 
 def merge_adjacent_messages(conversation, time_tollerance_s):
     new = Conversation()
