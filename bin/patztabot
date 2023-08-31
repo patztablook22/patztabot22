@@ -11,7 +11,7 @@ DATA=$PROJECT/data
 [ -d "$DATA" ]   || (echo "Could not find data directory." >&2   && exit 1)
 
 while :; do
-    python3 -- "$SRC/patztabot.py" \
+    python3 -- "$SRC/patztabot_main.py" \
         "$CONFIG/patztabot_config.ini" \
         "$CONFIG/patztabot_token.txt" \
         "$DATA"

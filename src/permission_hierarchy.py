@@ -3,7 +3,7 @@ import pickle
 class PermissionHierarchy:
     def __init__(self, config, cache_path):
         self.cache_path = cache_path
-        self.levels = ['ignored', 'chat', 'mod', 'admin', 'owner']
+        self.levels = ['ignored', 'visible', 'mod', 'admin', 'owner']
         self.default = config['default']
         self.saved = config['saved']
         try:
@@ -31,7 +31,7 @@ class PermissionHierarchy:
         else:
             return self.default
 
-    def chat(self, uid):
+    def visible(self, uid):
         return self.get_level(uid) >= 1
 
     def mod(self, uid):

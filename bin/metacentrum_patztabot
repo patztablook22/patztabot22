@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-#PBS -N discord_bot
+#PBS -N patztabot
 #PBS -j oe
 
 DATADIR=/storage/brno2/home/zavorap/

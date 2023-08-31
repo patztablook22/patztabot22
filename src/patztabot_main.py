@@ -34,6 +34,15 @@ class Patztabot(genbot.Genbot):
             await self.close()
 
         @self.slash_command()
+        async def asdf(ctx):
+            if not self._permissions.admin(ctx.author.id):
+                await ctx.respond("Permission not granted.", ephemeral=True)
+                return
+
+            result = ctx.guild
+            await ctx.respond(str(result), ephemeral=True)
+
+        @self.slash_command()
         async def ping(ctx):
             await ctx.respond("Pong.", ephemeral=True)
 
@@ -117,16 +126,21 @@ class Patztabot(genbot.Genbot):
                 return
             await ctx.respond("Permission level set successfully.", ephemeral=True)
 
+    def text_channel_prefix(self, channel, prefix):
+        if not isinstance(channel, discord.TextChannel): return False
+        if channel.name.startswith(prefix): return True
+        return channel.category and channel.category.name.startswith(prefix)
+
     def test_channels(self):
         buff = []
         for guild in self.guilds:
-            for channel in guild.text_channels:
-                if channel.name.startswith("patztabot22-test-"):
+            for channel in guild.channels:
+                if self.text_channel_prefix(channel, "patztabot22-test"):
                     buff.append(channel)
         return buff
 
     def worker(self):
-        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model8"))
+        gpt = FinetunedGpt(os.path.join(self._data_dir, "chat_model9"))
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
@@ -134,7 +148,7 @@ class Patztabot(genbot.Genbot):
                 handler.close()
                 continue
             
-            while True:
+            for _ in range(1):
                 out = gpt.predict([data])[0].strip().split('[BREAK]')[0]
                 if '[MEND]' in out:
                     out = out.split('[MEND]')[0]
@@ -145,10 +159,17 @@ class Patztabot(genbot.Genbot):
 
             handler.close()
 
+    async def is_visible(self, message):
+        #if self._permissions.visible(message.author.id): return True
+        role = 'visible' in map(lambda r: r.name, message.author.roles)
+        if role and "patztabot22" in str(message.guild): return True
+        return False
+
     async def on_message(self, message):
-        if not self._permissions.chat(message.author.id):
-            return
+        if message.author == self.user: return
+        if not await self.is_visible(message): return
         if isinstance(message.channel, discord.DMChannel) \
+                or self.text_channel_prefix(message.channel, "patztabot22-direct") \
                 or self.user in message.mentions:
             await self.attend(message.channel)
 

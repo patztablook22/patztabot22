@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-#PBS -N train
+#PBS -N shellbot
 #PBS -j oe
 
 export TMPDIR=$SCRATCHDIR
@@ -27,6 +27,7 @@ if [ ! -d $SCRATCH_VENV ]; then
     source $SCRATCH_VENV/bin/activate
 
     pip3 install \
+        'git+https://github.com/patztablook22/shellbot' \
         torch \
         accelerate \
         transformers \
@@ -37,7 +38,7 @@ else
     source $SCRATCH_VENV/bin/activate
 fi
 
-$PROJECT/bin/train
+$PROJECT/bin/shellbot
 
 #rm -rf $SCRATCHDIR/*
 

@@ -11,7 +11,7 @@ DATA=$PROJECT/data
 [ -d "$DATA" ]   || (echo "Could not find data directory." >&2   && exit 1)
 
 while :; do
-    python3 -- "$SRC/train.py" \
+    python3 -- "$SRC/shellbot_main.py" \
         "$CONFIG/shellbot_config.ini" \
         "$CONFIG/shellbot_token.txt" \
         "$DATA"
