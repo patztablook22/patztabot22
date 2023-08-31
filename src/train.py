@@ -7,7 +7,8 @@ def main(argv):
     config.read(argv[1])
     token = open(argv[2]).read().strip()
     data_dir = argv[3]
-    shell = shellbot.Shellbot()
+    admins = [int(l.strip()) for l in config['permissions']['admins'].splitlines() if l]
+    shell = shellbot.Shellbot(admins=admins)
 
     shell.run(token)
 

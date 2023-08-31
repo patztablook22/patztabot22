@@ -94,7 +94,8 @@ class Patztabot(genbot.Genbot):
         @permissions.command(name='set')
         async def permSet(ctx, 
                           user: discord.User, 
-                          level: discord.Option(str, autocomplete=discord.utils.basic_autocomplete(get_possible_levels))):
+                          level: discord.Option(str, autocomplete=discord.utils.basic_autocomplete(get_possible_levels)),
+                          ):
             author_level = self._permissions.get_level(ctx.author.id)
             target_level = self._permissions.get_level(user.id)
             if target_level >= author_level:
