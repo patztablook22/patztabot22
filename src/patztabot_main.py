@@ -84,12 +84,12 @@ class Patztabot(genbot.Genbot):
 
         @self.slash_command()
         async def thread(ctx, name: str):
-            if not await self.is_visible_user(ctx.author, ctx.guild):
+            if not self.is_visible_user(ctx.author, ctx.guild):
                 await ctx.respond("You are not visible.", ephemeral=True)
                 return
 
             if isinstance(ctx.channel, discord.Thread):
-                await ctx.respond("Can't create a thread here.")
+                await ctx.respond("Can't create a thread here.", ephemeral=True)
                 return
 
             interaction = await ctx.respond("Creating thread...")
@@ -98,7 +98,7 @@ class Patztabot(genbot.Genbot):
 
         @self.slash_command()
         async def reset(ctx):
-            if not await self.is_visible_user(ctx.author, ctx.guild):
+            if not self.is_visible_user(ctx.author, ctx.guild):
                 await ctx.respond("You are not visible.", ephemeral=True)
                 return
             await ctx.respond("Done.")
@@ -163,7 +163,7 @@ class Patztabot(genbot.Genbot):
 
 
     def worker(self):
-        response_limit = 1
+        response_limit = 2
         model_name = os.path.join(self._data_dir, "chat_model9")
 
         gpt = FinetunedGpt(model_name)
@@ -187,12 +187,12 @@ class Patztabot(genbot.Genbot):
             handler.close()
 
 
-    async def is_visible_message(self, message):
+    def is_visible_message(self, message):
         MT = discord.MessageType
         if message.type not in [MT.default]: return False
-        return await self.is_visible_user(message.author, message.guild)
+        return self.is_visible_user(message.author, message.guild)
 
-    async def is_visible_user(self, member, guild):
+    def is_visible_user(self, member, guild):
         if isinstance(member, (discord.User, 
                                discord.abc.User, 
                                discord.user.User)): return True
@@ -202,7 +202,7 @@ class Patztabot(genbot.Genbot):
 
     async def on_message(self, message):
         if message.author == self.user: return
-        if not await self.is_visible_message(message): return
+        if not self.is_visible_message(message): return
         channel = message.channel
 
         trigger = False
@@ -227,13 +227,17 @@ class Patztabot(genbot.Genbot):
             if msg.interaction.type != appcmd: return False
             return msg.interaction.name == 'reset'
 
+        def is_hidden(msg):
+            return msg.content.startswith("!")
+
         async def make_prompt():
             content = []
             l = 0
             last_trigger = False
             async for m in channel.history(limit=1000, oldest_first=False): 
                 if is_reset_confirmation(m): break
-                if not await self.is_visible_message(m): continue
+                if not self.is_visible_message(m): continue
+                if is_hidden(m): continue
                 if not last_trigger and m.author != self.user:
                     if self._last_responded.get(channel, -1) >= m.id: return
                     self._last_responded[channel] = m.id
@@ -241,7 +245,6 @@ class Patztabot(genbot.Genbot):
 
                 u = 'you' if m.author == self.user else m.author.name
                 c = m.content
-                if c.startswith("!"): continue
                 buff = f'[MSTART]{u}[WRITES]{c}[MEND][BREAK]\n'
                 l += len(buff)
                 if l > 500: break
@@ -251,7 +254,6 @@ class Patztabot(genbot.Genbot):
             if len(content) == 0: return None
             content = content[::-1]
             content.append('[MSTART]you[WRITES]')
-            print(content)
             return ''.join(content)
 
 
