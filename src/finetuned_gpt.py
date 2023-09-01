@@ -1,6 +1,6 @@
 class FinetunedGpt():
     def __init__(self, path):
-        pass
+        #return
         from transformers import GPT2LMHeadModel, GPT2Tokenizer
         self._tokenizer = GPT2Tokenizer.from_pretrained(path)
         self._model = GPT2LMHeadModel.from_pretrained(path)
