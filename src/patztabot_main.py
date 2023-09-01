@@ -166,7 +166,7 @@ class Patztabot(genbot.Genbot):
         response_limit = 2
         model_name = os.path.join(self._data_dir, "chat_model9")
 
-        gpt = FinetunedGpt(model_name)
+        #gpt = FinetunedGpt(model_name)
         while True:
             handler = self.consume(max_size=1)[0]
             data = handler.get_data()
@@ -175,6 +175,9 @@ class Patztabot(genbot.Genbot):
                 continue
 
             handler.wait()
+            handler.write('pong')
+            handler.close()
+            continue
             for _ in range(response_limit):
                 out = gpt.predict([data])[0].strip().split('[BREAK]')[0]
                 if '[MEND]' in out:
@@ -190,6 +193,7 @@ class Patztabot(genbot.Genbot):
     def is_visible_message(self, message):
         MT = discord.MessageType
         if message.type not in [MT.default]: return False
+        if len(message.content) < 2: return False
         return self.is_visible_user(message.author, message.guild)
 
     def is_visible_user(self, member, guild):
