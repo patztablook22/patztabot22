@@ -33,3 +33,15 @@ class FinetunedGpt():
         generated_ids = [oids[len(iids):] for oids, iids in zip(output_ids, inputs.input_ids)]
         responses = [self._tokenizer.decode(a, skip_special_tokens=False) for a in generated_ids]
         return responses
+
+
+
+
+
+
+class FinetunedGpt1():
+    def __init__(self, path):
+        pass
+
+    def predict(self, prompts):
+        return ['Pong.'] * len(prompts)

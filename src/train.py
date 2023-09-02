@@ -17,14 +17,12 @@ shellbot.success()
 def train(data_dir):
     train_path = os.path.join(data_dir, 'train.txt')
     val_path = os.path.join(data_dir, 'val.txt')
-    model_name = os.path.join(data_dir, 'chat_model8')
     model_name = 'gpt2-xl'
     tokenizer_name = model_name
-    block_size = lambda i: np.random.choice([32, 48, 64, 96, 96, 128, 128, 192, 256, 512])
     block_size = lambda i: np.random.choice([64, 128, 256])
-    epochs = 6
+    epochs = 8
     bsize = 4
-    save_dir = os.path.join(data_dir, "chat_model10")
+    save_dir = os.path.join(data_dir, "chat_model11")
     whitelist = ["patz", "Patztablook TwentyTwo", "you",
                  "Sběratel Banánů", "Alexander Terziev",
                  "Martin McNickle", "Jan Zasadil", "Filip Kastl",
@@ -101,13 +99,13 @@ def train(data_dir):
         data_collator=data_collator,
         train_dataset=train_dataset,
         #eval_dataset=val_dataset
-        callbacks=[FlushCallback()]
     )
+    trainer.callback_handler.callbacks = [LogCallback()]
     shellbot.success()
 
-    shellbot.log("Starting training.")
+    shellbot.log("Starting training")
     trainer.train()
-    shellbot.success("Training finished.")
+    shellbot.log("Training finished")
 
     shellbot.log("Saving tokenizer", ...)
     tokenizer.save_pretrained(save_dir)
@@ -117,6 +115,24 @@ def train(data_dir):
     model.save_pretrained(save_dir)
     shellbot.success()
 
+class LogCallback(TrainerCallback):
+    def __init__(self):
+        super().__init__()
+
+    def on_step_end(self, args, state, control, **kwargs):
+        cur = state.global_step - 1
+        end = state.max_steps
+        if cur % (end // 100) == 0 or cur == end - 1:
+            self._print_progress(cur, end)
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        _ = logs.pop("total_flos", None)
+        if state.is_local_process_zero:
+            print(logs, flush=True)
+
+    def _print_progress(self, current, total):
+        pad = len(str(total))
+        shellbot.log(str(current + 1).rjust(pad), '/', total, ...)
 
 class FlushCallback(TrainerCallback):
     def on_train_begin(self, args, state, control, **kwargs):

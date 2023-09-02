@@ -1,7 +1,7 @@
 import genbot, discord
 import sys, os, time
 from configparser import ConfigParser
-from finetuned_gpt import FinetunedGpt
+from finetuned_gpt import FinetunedGpt, FinetunedGpt1
 from permission_hierarchy import PermissionHierarchy
 import numpy as np
 
@@ -67,6 +67,8 @@ class Patztabot(genbot.Genbot):
                 prev = [msg async for msg in channel.history() if msg.author == self.user]
                 await channel.delete_messages(prev)
             for channel in test_channels:
+                if channel in self._last_responded:
+                    del self._last_responded[channel]
                 await self.attend(channel)
 
         @self.slash_command()
@@ -163,7 +165,7 @@ class Patztabot(genbot.Genbot):
 
 
     def worker(self):
-        response_limit = 2
+        response_limit = 3
         model_name = os.path.join(self._data_dir, "chat_model10")
 
         gpt = FinetunedGpt(model_name)
