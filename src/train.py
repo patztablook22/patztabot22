@@ -2,10 +2,12 @@ import shellbot
 
 shellbot.log('Importing libraries', ...)
 
+import threading
 import torch
-import sys, os
+import sys, os, time
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from transformers import DataCollatorForLanguageModeling, TrainingArguments, Trainer
+from transformers.trainer_callback import TrainerCallback
 from dataset import ChatDataset
 import numpy as np
 
@@ -16,12 +18,13 @@ def train(data_dir):
     train_path = os.path.join(data_dir, 'train.txt')
     val_path = os.path.join(data_dir, 'val.txt')
     model_name = os.path.join(data_dir, 'chat_model8')
+    model_name = 'gpt2-xl'
     tokenizer_name = model_name
     block_size = lambda i: np.random.choice([32, 48, 64, 96, 96, 128, 128, 192, 256, 512])
     block_size = lambda i: np.random.choice([64, 128, 256])
-    epochs = 4
+    epochs = 6
     bsize = 4
-    save_dir = os.path.join(data_dir, "chat_model9")
+    save_dir = os.path.join(data_dir, "chat_model10")
     whitelist = ["patz", "Patztablook TwentyTwo", "you",
                  "Sběratel Banánů", "Alexander Terziev",
                  "Martin McNickle", "Jan Zasadil", "Filip Kastl",
@@ -98,16 +101,49 @@ def train(data_dir):
         data_collator=data_collator,
         train_dataset=train_dataset,
         #eval_dataset=val_dataset
+        callbacks=[FlushCallback()]
     )
     shellbot.success()
 
-    shellbot.log('Starting training.')
+    shellbot.log("Starting training.")
+    trainer.train()
+    shellbot.success("Training finished.")
+
+    shellbot.log("Saving tokenizer", ...)
+    tokenizer.save_pretrained(save_dir)
+    shellbot.success()
+
+    shellbot.log("Saving model", ...)
+    model.save_pretrained(save_dir)
+    shellbot.success()
+
+
+class FlushCallback(TrainerCallback):
+    def on_train_begin(self, args, state, control, **kwargs):
+        print(flush=True)
+
+    def on_step_end(self, args, state, control, **kwargs):
+        print(flush=True)
+
+    def on_prediction_step(self, args, state, control, eval_dataloader=None, **kwargs):
+        print(flush=True)
+
+    def on_evaluate(self, args, state, control, **kwargs):
+        print(flush=True)
+
+    def on_predict(self, args, state, control, **kwargs):
+        print(flush=True)
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        print(flush=True)
+
+    def on_train_end(self, args, state, control, **kwargs):
+        print(flush=True)
 
 
 def main(argv):
     data_dir = 'rp-patrik-zavoral/data'
     train(data_dir)
-
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -77,7 +77,7 @@ class Patztabot(genbot.Genbot):
 
             await ctx.defer(ephemeral=True)
             first = True
-            async for output in self.enqueue(lambda: prompt):
+            async for output in await self.enqueue(lambda: prompt):
                 if first: output = f"[{prompt}]{output}"
                 first = False
                 await ctx.respond(output, ephemeral=True)
@@ -164,7 +164,7 @@ class Patztabot(genbot.Genbot):
 
     def worker(self):
         response_limit = 2
-        model_name = os.path.join(self._data_dir, "chat_model9")
+        model_name = os.path.join(self._data_dir, "chat_model10")
 
         gpt = FinetunedGpt(model_name)
         while True:
@@ -248,9 +248,9 @@ class Patztabot(genbot.Genbot):
                 c = m.content
                 buff = f'[MSTART]{u}[WRITES]{c}[MEND][BREAK]\n'
                 l += len(buff)
-                if l > 500: break
+                if l > 1000: break
                 content.append(buff)
-                if len(content) > 8: break
+                if len(content) > 16: break
 
             if len(content) == 0: return None
             content = content[::-1]
