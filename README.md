@@ -39,7 +39,7 @@ The Bachelor thesis is expected to focus on what is currently called "AI alignme
 
 ## patztabot22
 
-The Discord bot `patztabot22` is the focal point of the project. It represents the "AI persona" (an AI double of `patztablook22`) and facilitates all interaction with the underlying LLM.
+The Discord bot `patztabot22` is the focal point of the project. It represents the "AI persona" (an AI double of `patztablook22`) and facilitates all interaction with the underlying LLM. To run the bot, execute `bin/patztabot`, or enqueue (`qsub`) `bin/metacentrum_patztabot` to run it as a Metacentrum job.
 
 ### Communication
 
@@ -81,6 +81,35 @@ The primary permissions can be changed by using the permission `/permission` com
 
 In addition to this global (across-server) hierarchy, the bot can take into account the roles on trusted servers (such as the private development/testing server - `Sanctuary of the great patztabot22`). For example, a user with the role `visible` is automatically visible to the bot without the need of modifying its primary permission hierarchy.
 
+### Evaluation pipeline
+
+To quickly evaluate the model, there is an evaluation pipeline, triggered by `/test` (see #commands):
+- Finds all test channels - any channel with its name (or its category's name) prefixed by `patztabot22-test`. These channels contain test scenarios (introduction, personal question, intellectual question, ...).
+- Deletes its own previous messages from the test channels.
+- Generates new responses.
+
+### Commands
+
+- `/shutdown` - shuts the bot down
+- `/restart` - restarts the main bot file (changes to the source code with take effect)
+- `/ping` - responds `Pong.`
+- `/asdf` - triggers debugging response, whatever it may be
+- `/test` - triggers the evaluation pipeline
+- `/reset` - prevents the bot from seeing earlier messages
+- `/generate prompt:str` - generates a response to a manually provided prompt
+- `/thread name:str` - creates a thread for direct communication with the bot
+- `/permissions get user:user` - queries the level of the user in the bot's primary hierarchy
+- `/permissions set user:user level:str` - modifies the level of the user in the bot's primary hiearchy
+
+## shellbot
+
+The discord bot `Shell` is a helper bot for executing important scripts such as model fine-tuning. Originally, I used to enqueue these scripts directly to Metacentrum. This, however, had the following drawbacks:
+- Queue waiting time - very inconvenient for debugging - enqueue, view log file with errors, repeat.
+- No real-time IO. 
+
+The bot tackles both of these disadvantages by:
+- Running as the outer ("shell") Metacentrum service.
+- Creating subprocesses on the fly using Discord commands and forwarding their IO back to Discord.
 
 # Status
 
