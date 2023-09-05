@@ -8,8 +8,10 @@ out-of-the-box:
 not a part of the repo:
 - `data` - datasets, models, cache, ...
 - `config`
-  - `discord_token.txt` - secret Discord bot token
-  - `discord_config.ini` - default Discord bot permissions etc.
+  - `patztabot_token.txt` - secret Discord bot token for patztabot
+  - `patztabot_config.ini` - default Discord bot permissions etc. for patztabot
+  - `shellbot_token.txt` - secret Discord bot token for shellbot
+  - `shellbot_config.ini` - default Discord bot permissions etc. for shellbot
 
 ## RP specification
 
@@ -35,25 +37,22 @@ The Bachelor thesis is expected to focus on what is currently called "AI alignme
 
 # Status
 
-- Discord bot
-    - prompt pipeline feeding the model message history, 
-      triggered automatically in DMs or when pinged in public text channels
-    - permission hierarchy with slash command integration (`/permissions`)
-      (owner, admin, mod, chat, ignored); 
-      cached and restored when restarting the bot
-    - automatic testing mode triggered by a slash command (`/test`);
-      test messages taken from selected text channels 
-      (all visible text channels with the prefix `patztabot22-test-`)
-    - sped up generated response time from approximately 30s to 3s
-      (thanks to custom generation parameters and using separate huggingface 
-       APIs for tokenization and generation)
+- Discord bot (patztabot22)
+  - prompt pipeline feeding the model message history, 
+    triggered automatically in DMs or when pinged in public text channels
+  - permission hierarchy includng server roles, custom thread creation, context window manipulation features (`/permissions`, `/thread`, `/reset`, `!` message prefix)
+  - automatic testing mode triggered by a slash command (`/test`);
+    test messages taken from selected text channels
+  - sped up generated response time from approximately 1 minute to 10 seconds
+    (thanks to custom generation parameters and using separate huggingface 
+     APIs for tokenization and generation)
+- Helper discod bot (Shell)
+  - Essentially a Discord logger for training. Metacentrum has very impractical log handling. This bot enables me to see the training program's STDOUT in real time through Discord and to "skip" waiting in the Metacentrum's queue.
 - Models
-    - fine-tuned several models (openai-gpt, ..., gpt2-xl) on about 4 years
-      of preprocessed messenger data
-    - non-zero loss only on whitelisted users (me and a few others)
-        - other users only provide generation context 
-          without being part of the generated distribution itself
-    - experimented with a few prompt and generation modifications, 
-      notably stopping conditions and sampling parameters; interestingly
-      slight "repetition bonus" (around `repetition_penalty=0.95`) seems to help maintaining conversation flow
+  - fine-tuned several models (openai-gpt, ..., gpt2-xl) on about 5 years
+    of preprocessed messenger data and simulated scenarios
+  - masked loss for all but whitelisted users (me and a few others)
+    - other users only provide generation context 
+      without being part of the generated distribution itself
+  - custom generation parameters 
 
