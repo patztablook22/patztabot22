@@ -166,7 +166,7 @@ class Patztabot(genbot.Genbot):
 
     def worker(self):
         response_limit = 3
-        model_name = os.path.join(self._data_dir, "chat_model10")
+        model_name = os.path.join(self._data_dir, "active_model")
 
         gpt = FinetunedGpt(model_name)
         while True:

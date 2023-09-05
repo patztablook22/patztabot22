@@ -116,13 +116,16 @@ def train(data_dir):
     shellbot.success()
 
 class LogCallback(TrainerCallback):
+    BLANK = '‎ '
+
     def __init__(self):
         super().__init__()
 
     def on_step_end(self, args, state, control, **kwargs):
         cur = state.global_step - 1
         end = state.max_steps
-        if cur % (end // 100) == 0 or cur == end - 1:
+        interval = max(end // 1000, 1)
+        if cur % interval == 0 or cur == end - 1:
             self._print_progress(cur, end)
 
     def on_log(self, args, state, control, logs=None, **kwargs):
@@ -132,7 +135,7 @@ class LogCallback(TrainerCallback):
 
     def _print_progress(self, current, total):
         pad = len(str(total))
-        shellbot.log(str(current + 1).rjust(pad), '/', total, ...)
+        shellbot.log(LogCallback.BLANK + str(current + 1).rjust(pad), '/', total, ...)
 
 class FlushCallback(TrainerCallback):
     def on_train_begin(self, args, state, control, **kwargs):
@@ -158,7 +161,7 @@ class FlushCallback(TrainerCallback):
 
 
 def main(argv):
-    data_dir = 'rp-patrik-zavoral/data'
+    data_dir = "/storage/brno2/home/zavorap/rp-patrik-zavoral/data"
     train(data_dir)
 
 if __name__ == '__main__':
