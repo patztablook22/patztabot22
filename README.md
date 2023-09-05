@@ -123,24 +123,24 @@ View is a pseudo-terminal for interacting with jobs. To create a view for a job,
 - Report log - job ID on the top, below real-time STDOUT/STDERR of the job.
 - Control buttons - trash can to close the view (does not affect the underlying job), a skull to kill the underlying job (without closing the view).
 
-# Status
+### Permissions
 
-- Discord bot (patztabot22)
-  - prompt pipeline feeding the model message history, 
-    triggered automatically in DMs or when pinged in public text channels
-  - permission hierarchy includng server roles, custom thread creation, context window manipulation features (`/permissions`, `/thread`, `/reset`, `!` message prefix)
-  - automatic testing mode triggered by a slash command (`/test`);
-    test messages taken from selected text channels
-  - sped up generated response time from approximately 1 minute to 10 seconds
-    (thanks to custom generation parameters and using separate huggingface 
-     APIs for tokenization and generation)
-- Helper discod bot (Shell)
-  - Essentially a Discord logger for training. Metacentrum has very impractical log handling. This bot enables me to see the training program's STDOUT in real time through Discord and to "skip" waiting in the Metacentrum's queue.
-- Models
-  - fine-tuned several models (openai-gpt, ..., gpt2-xl) on about 5 years
-    of preprocessed messenger data and simulated scenarios
-  - masked loss for all but whitelisted users (me and a few others)
-    - other users only provide generation context 
-      without being part of the generated distribution itself
-  - custom generation parameters 
+The `admin` privilege has to be given manually in the bot's configuration, `config/shellbot_config.ini`:
 
+```ini
+[permissions]
+admins: 
+    620968062044209172
+```
+
+The reason for this is that the ability to run and interact with arbitrary programs on the host's machine poses security risks. Also, given that this bot only controls model training logic etc., it does not need a multi-level permission hierarchy similar to `patztabot22`'s.
+
+### Commands
+
+- `/shutdown` - shuts the bot down
+- `/restart` - restarts the main bot file (changes to the source code with take effect)
+- `/ping` - responds `Pong.`
+- `/job run command:str` - runs command, usually `program arg1 arg2 arg3 ...`
+- `/job list` - views jobs - ID, arguments, status (running/success/failed)
+- `/job view job:int` - creates a new view for the given job (identified by its ID)
+- `/job kill job:int` - kills the job (identified by its ID)
