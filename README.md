@@ -35,6 +35,53 @@ Subtasks for the RP will possibly include:
 The Bachelor thesis is expected to focus on what is currently called "AI alignment", especially on aligning pretrained LLMs for downstream tasks, e.g. using parameter efficient fine tuning (PEFT) techniaues, prompt tuning, RLHF, etc.
 
 
+# Documentation
+
+## patztabot22
+
+The Discord bot `patztabot22` is the focal point of the project. It represents the "AI persona" (an AI double of `patztablook22`) and facilitates all interaction with the underlying LLM.
+
+### Communication
+
+To communicate with `patztabot22`, a simple message has to be sent from a `visible` user (read #permissions) either:
+- In private messages,
+- In a thread created using the bot's `/thread` command (read #commands),
+- In any channel with its name (or its category's name) prefixed `patztabot22-direct`,
+- In any public channel when directly pinged.
+
+When communication is triggered, the model enqueues the message context for response generation. When the LLM worker consumes the context, the `patztabot22 is typing...` Discord status is triggered for as long as the model is generating. The bot skips all messages by non-`visible` users.
+
+There are two important features regarding message context collection:
+- Using the command `/reset` (read #commands) prevents the model from seeing earlier messages. This is useful e.g. when the model gets confused by a particular message.
+- Any message with the prefix `!` (e.g. "! hello world") is completely ignored by the bot. This makes it easy to make hidden notes or communciate with other users in channels where normal messages trigger a response.
+
+### Permissions
+
+The primary permission system of the bot is constituted by the following hierarchy:
+- Onwer
+- Admin
+- Mod
+- Visible
+- Ignored
+
+The default level assigned to users and specific user permissions (e.g. the owner) can be given to the bot in the config file `config/patztabot_config.ini`:
+
+```ini
+[permissions]
+
+# ignored by default (level 0)
+default = 0
+
+# the Discord user with given ID is the owner (level 4)
+saved =
+    620968062044209172 4
+```
+
+The primary permissions can be changed by using the permission `/permission` command (see #commands). A user can change the permissions of only lower-level users and can never grant higher or equal level to its own (for example, an admin has access to the bottom three levels - ignored, visible, mod - but not to the owners and to itself). Permissions are cached so that restarting the bot does not necessitate manually setting up the permissions again.
+
+In addition to this global (across-server) hierarchy, the bot can take into account the roles on trusted servers (such as the private development/testing server - `Sanctuary of the great patztabot22`). For example, a user with the role `visible` is automatically visible to the bot without the need of modifying its primary permission hierarchy.
+
+
 # Status
 
 - Discord bot (patztabot22)
