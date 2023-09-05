@@ -117,7 +117,7 @@ For security reasons, this bot only allows interaction to manually selected user
 
 The main unit of `Shell` is a `Job`. To run a job, the script and arguments must be given to the `/job run` command (see #commands). This automatically triggers a #view creation for that job. All jobs (finished or running) can be listed by `/job list`. A job can be killed by giving its ID to `/job kill`.
 
-## Views
+### Views
 
 View is a pseudo-terminal for interacting with jobs. To create a view for a job, give its ID to `/job view`. A view, consisting of the following elements, will be generated:
 - Report log - job ID on the top, below real-time STDOUT/STDERR of the job.
