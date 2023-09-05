@@ -45,9 +45,9 @@ The Discord bot `patztabot22` is the focal point of the project. It represents t
 
 ### Communication
 
-To communicate with `patztabot22`, a simple message has to be sent from a `visible` user (read #permissions) either:
+To communicate with `patztabot22`, a simple message has to be sent from a `visible` user (see [permissions](#permissions)) either:
 - In private messages,
-- In a thread created using the bot's `/thread` command (read #commands),
+- In a thread created using the bot's `/thread` command (read [commands](#commands)),
 - In any channel with its name (or its category's name) prefixed `patztabot22-direct`,
 - In any public channel when directly pinged.
 
@@ -56,7 +56,7 @@ When communication is triggered, the model enqueues the message context for resp
 <img src="assets/img/screenshot-patztabot22-typing.png" />
 
 There are two important features regarding message context collection:
-- Using the command `/reset` (read #commands) prevents the model from seeing earlier messages. This is useful e.g. when the model gets confused by a particular message.
+- Using the command `/reset` (read [commands](#commands)) prevents the model from seeing earlier messages. This is useful e.g. when the model gets confused by a particular message.
 - Any message with the prefix `!` (e.g. "! hello world") is completely ignored by the bot. This makes it easy to make hidden notes or communciate with other users in channels where normal messages trigger a response.
 
 <img src="assets/img/screenshot-patztabot22-reset-invisible.png" />
@@ -83,7 +83,7 @@ saved =
     620968062044209172 4
 ```
 
-The primary permissions can be changed by using the `/permission get/set` commands (see #commands). A user can change the permissions of only lower-level users and can never grant higher or equal level to its own (for example, an admin has access to the bottom three levels - ignored, visible, mod - but not to the owners and to itself). Permissions are cached so that restarting the bot does not necessitate manually setting up the permissions again.
+The primary permissions can be changed by using the `/permission get/set` commands (see [commands](#commands)). A user can change the permissions of only lower-level users and can never grant higher or equal level to its own (for example, an admin has access to the bottom three levels - ignored, visible, mod - but not to the owners and to itself). Permissions are cached so that restarting the bot does not necessitate manually setting up the permissions again.
 
 <img src="assets/img/screenshot-patztabot22-permissions-get.png" />
 <img src="assets/img/screenshot-patztabot22-permissions-set.png" />
@@ -93,7 +93,7 @@ In addition to this global (across-server) hierarchy, the bot can take into acco
 
 ### Evaluation pipeline
 
-To quickly evaluate the model, there is an evaluation pipeline, triggered by `/test` (see #commands):
+To quickly evaluate the model, there is an evaluation pipeline, triggered by `/test` (see [commands](#commands)):
 - Finds all test channels - any channel with its name (or its category's name) prefixed by `patztabot22-test`. These channels contain test scenarios (introduction, personal question, intellectual question, ...).
 - Deletes its own previous messages from the test channels.
 - Generates new responses.
@@ -108,12 +108,12 @@ To quickly evaluate the model, there is an evaluation pipeline, triggered by `/t
 - `/restart` - restarts the main bot file (changes to the source code with take effect)
 - `/ping` - responds `Pong.`
 - `/asdf` - triggers debugging response, whatever it may be
-- `/test` - triggers the evaluation pipeline
+- `/test` - triggers the [evaluation pipeline](#evaluation-pipeline)
 - `/reset` - prevents the bot from seeing earlier messages
 - `/generate prompt:str` - generates a response to a manually provided prompt
-- `/thread name:str` - creates a thread for direct communication with the bot
-- `/permissions get user:user` - queries the level of the user in the bot's primary hierarchy
-- `/permissions set user:user level:str` - modifies the level of the user in the bot's primary hiearchy
+- `/thread name:str` - creates a thread for direct [communication](#communication) with the bot
+- `/permissions get user:user` - queries the [level](#permissions) of the user in the bot's primary hierarchy
+- `/permissions set user:user level:str` - modifies the [level](#permissions) of the user in the bot's primary hiearchy
 
 ## Shell
 
@@ -125,7 +125,7 @@ The bot tackles both of these disadvantages by:
 - Running as the outer ("shell") Metacentrum service.
 - Creating subprocesses on the fly using Discord commands and forwarding their IO back to Discord.
 
-For security reasons, this bot only allows interaction to manually selected users in the bot's configuration (see #permissions).
+For security reasons, this bot only allows interaction to manually selected users in the bot's configuration (see [permissions](#shell-permissions)).
 
 
 <img src="assets/img/screenshot-shell-profile.png" />
@@ -133,7 +133,7 @@ For security reasons, this bot only allows interaction to manually selected user
 
 ### Jobs
 
-The main unit of `Shell` is a `Job`. To run a job, the script and arguments must be given to the `/job run` command (see #commands). This automatically triggers a #view creation for that job. All jobs (finished or running) can be listed by `/job list`. A job can be killed by giving its ID to `/job kill`.
+The main unit of `Shell` is a `Job`. To run a job, the script and arguments must be given to the `/job run` command (see [commands](#shell-commands)). This automatically triggers a #view creation for that job. All jobs (finished or running) can be listed by `/job list`. A job can be killed by giving its ID to `/job kill`.
 
 
 <img src="assets/img/screenshot-shell-run.png" />
@@ -150,7 +150,7 @@ View is a pseudo-terminal for interacting with jobs. To create a view for a job,
 <img src="assets/img/screenshot-shell-view.png" />
 
 
-### Permissions
+### Shell permissions
 
 The `admin` privilege has to be given manually in the bot's configuration, `config/shellbot_config.ini`:
 
@@ -162,12 +162,12 @@ admins:
 
 The reason for this is that the ability to run and interact with arbitrary programs on the host's machine poses security risks. Also, given that this bot only controls model training logic etc., it does not need a multi-level permission hierarchy similar to `patztabot22`'s.
 
-### Commands
+### Shell commands
 
 - `/shutdown` - shuts the bot down
 - `/restart` - restarts the main bot file (changes to the source code with take effect)
 - `/ping` - responds `Pong.`
-- `/job run command:str` - runs command, usually `program arg1 arg2 arg3 ...`
-- `/job list` - views jobs - ID, arguments, status (running/success/failed)
-- `/job view job:int` - creates a new view for the given job (identified by its ID)
+- `/job run command:str` - [runs](#jobs) command, usually `program arg1 arg2 arg3 ...`
+- `/job list` - lists jobs - ID, arguments, status (running/success/failed)
+- `/job view job:int` - creates a new [view](#views) for the given job (identified by its ID)
 - `/job kill job:int` - kills the job (identified by its ID)
