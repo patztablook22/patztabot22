@@ -101,7 +101,7 @@ To quickly evaluate the model, there is an evaluation pipeline, triggered by `/t
 - `/permissions get user:user` - queries the level of the user in the bot's primary hierarchy
 - `/permissions set user:user level:str` - modifies the level of the user in the bot's primary hiearchy
 
-## shellbot
+## Shell
 
 The discord bot `Shell` is a helper bot for executing important scripts such as model fine-tuning. Originally, I used to enqueue these scripts directly to Metacentrum. This, however, had the following drawbacks:
 - Queue waiting time - very inconvenient for debugging - enqueue, view log file with errors, repeat.
@@ -110,6 +110,18 @@ The discord bot `Shell` is a helper bot for executing important scripts such as 
 The bot tackles both of these disadvantages by:
 - Running as the outer ("shell") Metacentrum service.
 - Creating subprocesses on the fly using Discord commands and forwarding their IO back to Discord.
+
+For security reasons, this bot only allows interaction to manually selected users in the bot's configuration (see #permissions).
+
+### Jobs
+
+The main unit of `Shell` is a `Job`. To run a job, the script and arguments must be given to the `/job run` command (see #commands). This automatically triggers a #view creation for that job. All jobs (finished or running) can be listed by `/job list`. A job can be killed by giving its ID to `/job kill`.
+
+## Views
+
+View is a pseudo-terminal for interacting with jobs. To create a view for a job, give its ID to `/job view`. A view, consisting of the following elements, will be generated:
+- Report log - job ID on the top, below real-time STDOUT/STDERR of the job.
+- Control buttons - trash can to close the view (does not affect the underlying job), a skull to kill the underlying job (without closing the view).
 
 # Status
 
