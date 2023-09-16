@@ -171,3 +171,50 @@ The reason for this is that the ability to run and interact with arbitrary progr
 - `/job list` - lists jobs - ID, arguments, status (running/success/failed)
 - `/job view job:int` - creates a new [view](#views) for the given job (identified by its ID)
 - `/job kill job:int` - kills the job (identified by its ID)
+
+
+## Dataset pipeline
+
+The dataset is being prepared using `notebook/dataset.ipynb`. Roughly, it proceeds in the following steps:
+1. Loading conversations.
+2. Processing conversations.
+3. Dumping everything into the final `.txt` file.
+
+Each of these steps uses methods and classes in the `src/dataset.py` module.
+
+### Loading conversations
+
+Messenger conversations can be loaded from an officially downloaded Meta archive. Further, custom simulated conversations can be loaded. These are saved as `.txt` files with the following format:
+
+```txt
+User1: blah blah
+User2: indeed
+User3: bye
+User4: bye
+```
+
+To load them:
+```py
+messenger_conversations = dataset.load_messenger_conversations("/path/to/the/messages")
+simulated_conversations = dataset.load_simulated_conversations("/path/to/the/dir")
+```
+
+Both methods return lists of `Conversation`s. A conversation can be thought of as a chronologically ordered list of `Message`s with additional `title` and `participants` attributes. A `Message` is a dataclass consisting of `author`, `content`, `timestamp`. Timestamp is a float - unix time in seconds with possible decimals for higher precision.
+
+### Processing conversations
+
+Using `dataset.rename_conversation_user`, the username representing myself is renamed to `you` in all conversations.
+
+Each simulated conversation is copied 5 times, and the other "dummy" username is randomly sampled. This results in having multiple identical simulated conversations with the exception of the username of the dummy user:
+
+```py
+names = ['alice', 'bob', ...]
+conversation = ...
+sampled_conversations = dataset.sample_names(conversation, 'User1', names, 5)
+```
+
+Messages are removed from the conversations, if they
+- Are too long.
+- Indicate a mistake correction or a reply (e.g. "." is often used to pinpoint a previous message by replying to it, mistake corrections are usually of the form "*correction").
+- Are overused by the resulting language model, with the purpose of down-sampling (e.g. messages like "lol", "xd").
+- Contain 
