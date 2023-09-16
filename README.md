@@ -249,7 +249,7 @@ Although somewhat irregular, the `[MEND]` (message end) token is intentionally i
 
 ## Fine-tuning
 
-The entire pretrained model (`gpt2-xl`) is finetuned on chunks of random sizes (64, 128, 256) in order to force the model to learn from both shorter and longer contexts.
+The entire pretrained model (`gpt2-xl`) is finetuned on chunks of random sizes (64, 128, 256 tokens) in order to force the model to learn from both shorter and longer contexts.
 
 The loss function is masked such that the model only learns to generate messages from whitelisted users (notably myself). Since the loss for the non-whitelisted users is masked to 0, there is no gradient making the model generate their messages. This however still enables the model to use these non-whitelisted messages as a context for generating the whitelisted ones. Without this, the model would have no way of learning the dynamics of a conversation with a non-whitelisted user.
 
