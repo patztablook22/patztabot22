@@ -189,9 +189,11 @@ Messenger conversations can be loaded from an officially downloaded Meta archive
 ```txt
 User1: blah blah
 User2: indeed
-User3: bye
-User4: bye
+User1: bye
+User2: bye
 ```
+
+The simulated conversations were used to train the model specific situations that are not present in the dataset (e.g. introduction) or to override the dataset-trained response (e.g. mentioning the bot's inability to open URL links).
 
 To load them:
 ```py
