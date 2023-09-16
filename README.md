@@ -180,7 +180,7 @@ The dataset is being prepared using `notebook/dataset.ipynb`. Roughly, it procee
 2. Processing conversations.
 3. Dumping everything into the final `.txt` file.
 
-Each of these steps uses methods and classes in the `src/dataset.py` module.
+Each of these steps uses methods and classes in the `src/dataset.py` module. Messages in all languages (similar amount of Czech and English messages) were included. The final training file has the size of around 12 MiB and contains around 200 thousand messages.
 
 ### Loading conversations
 
@@ -216,5 +216,41 @@ sampled_conversations = dataset.sample_names(conversation, 'User1', names, 5)
 Messages are removed from the conversations, if they
 - Are too long.
 - Indicate a mistake correction or a reply (e.g. "." is often used to pinpoint a previous message by replying to it, mistake corrections are usually of the form "*correction").
-- Are overused by the resulting language model, with the purpose of down-sampling (e.g. messages like "lol", "xd").
-- Contain 
+- Are overused by the resulting language model, with the purpose of down-sampling (e.g. messages like "lol", "xd"). This happens randomly with given probability (e.g. `0.5`), such that their occurence is not eliminated altogether.
+
+
+Moreover, an `[AVOID]` token is prepended in front of given patterns, notably URLs. This is done when deleting the messages may disrupt the conversation flow. The model will be still able to learn about such patterns in the dataset (and will also learn to prepend them with the `[AVOID]` token). During generation, the `[AVOID]` token is blacklisted, effectively censoring such patterns (the model can't *generate* URLs, ...).
+
+### Dumping conversations into `.txt` files
+
+All conversations are first split into shorter conversations of at most 100 messages, which are then shuffled.
+
+The final file is in the following format:
+
+```txt
+[CSTART]
+[MSTART]username1[WRITES]something[BREAK]
+followup[BREAK]
+another followup[MEND][BREAK]
+[MSTART]username2[WRITES]a reply[MEND][BREAK]
+...
+[CEND]
+[CSTART]
+...
+[CEND]
+```
+
+The special tokens `[CSTART]`, `[CEND]` indicate the start and the end of the conversation. `[MSTART]` indicates the start of a message block, consisting of the author, the token `[WRITES]` and multiple submessages. 
+
+A submessage is a piece of text that can be submitted by the model right away, instead of finishing the entire message. The purpose for this is that the conversations usually contain a lot of shorter (sub-)messages sent in a short timespan (threhold set for 3 minutes), instead of being sent as large coherent units (which would be the case with e.g. letters or mails).
+
+Although somewhat irregular, the `[MEND]` (message end) token is intentionally in front of the message's last `[BREAK]`, instead of right after it. The reason for this is that the model generation is configured to stop when encountering the `[BREAK]` token. Whether the model should generate another submessage or not is checked by looking at the last token of the generated response. If it is `[MEND]`, the entire message has been generated, otherwise more submessages are to be generated.
+
+
+## Fine-tuning
+
+The entire pretrained model (`gpt2-xl`) is finetuned on chunks of random sizes (64, 128, 256) in order to force the model to learn from both shorter and longer contexts.
+
+The loss function is masked such that the model only learns to generate messages from whitelisted users (notably myself). Since the loss for the non-whitelisted users is masked to 0, there is no gradient making the model generate their messages. This however still enables the model to use these non-whitelisted messages as a context for generating the whitelisted ones. Without this, the model would have no way of learning the dynamics of a conversation with a non-whitelisted user.
+
+Metacentrum's batch computing services have been used. On a A40 GPU (44 GiB memory), training for 8 epochs with the batch size of 4 takes around 12 hours. This amount of epochs has been chosen to avoid overfitting the dataset or forgetting the original pre-training data.
