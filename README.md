@@ -242,11 +242,11 @@ another followup[MEND][BREAK]
 [CEND]
 ```
 
-The special tokens `[CSTART]`, `[CEND]` indicate the start and the end of the conversation. `[MSTART]` indicates the start of a message block, consisting of the author, the token `[WRITES]` and multiple submessages. 
+The special tokens `[CSTART]`, `[CEND]` indicate the start and the end of the conversation. `[MSTART]` indicates the start of a message block, consisting of the author, the token `[WRITES]`, and multiple submessages. 
 
-A submessage is a piece of text that can be submitted by the model right away, instead of finishing the entire message. The purpose for this is that the conversations usually contain a lot of shorter (sub-)messages sent in a short timespan (threhold set for 3 minutes), instead of being sent as large coherent units (which would be the case with e.g. letters or mails).
+A submessage is a piece of text that can be sent by the bot right away, instead of finishing the entire message. The purpose for this is that the conversations in the dataset usually contain a lot of shorter (sub-)messages sent in a short timespan (threhold set for 3 minutes), instead of being sent as large coherent units (which would be the case with e.g. letters or mails).
 
-Although somewhat irregular, the `[MEND]` (message end) token is intentionally in front of the message's last `[BREAK]`, instead of right after it. The reason for this is that the model generation is configured to stop when encountering the `[BREAK]` token. Whether the model should generate another submessage or not is checked by looking at the last token of the generated response. If it is `[MEND]`, the entire message has been generated, otherwise more submessages are to be generated.
+Although somewhat irregular, the `[MEND]` (message end) token is intentionally in front of the message's last `[BREAK]`, instead of immediatelly following it. The reason for this is that the model generation is configured to stop when encountering the `[BREAK]` token. Whether the model should generate another submessage or not is then checked by looking at the last token of the generated response. If it is the `[MEND]` token, the entire message has been generated, otherwise more submessages are to be generated.
 
 
 ## Fine-tuning
