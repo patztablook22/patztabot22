@@ -223,7 +223,7 @@ Messages are removed from the conversations, if they
 
 Moreover, an `[AVOID]` token is prepended in front of given patterns, notably URLs. This is done when deleting the messages may disrupt the conversation flow. The model will be still able to learn about such patterns in the dataset (and will also learn to prepend them with the `[AVOID]` token). During generation, the `[AVOID]` token is blacklisted, effectively censoring such patterns (the model can't *generate* URLs, ...).
 
-### Dumping conversations into `.txt` files
+### Dumping conversations into the final `.txt` file
 
 All conversations are first split into shorter conversations of at most 100 messages, which are then shuffled.
 
