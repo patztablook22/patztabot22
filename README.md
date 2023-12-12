@@ -1,4 +1,4 @@
-# RP Patrik Zavoral
+# patztabot22
 
 out-of-the-box:
 - `notebook` - interactive notebooks 
