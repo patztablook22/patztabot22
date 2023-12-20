@@ -6,4 +6,4 @@
 
 A custom LM trained to mimic me personally.
 
-- [RP specification](docs/rp-specification.md)
+- [RP specification](doc/rp-specification.md)
