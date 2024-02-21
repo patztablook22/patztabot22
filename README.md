@@ -4,7 +4,7 @@
 
 # patztabot22
 
-A custom LM trained to mimic me personally.
+Family of generative LMs trained to mimic me personally.
 
 - [RP specification](docs/rp-specification.md)
 
