@@ -1,0 +1,5 @@
+langid>=1.1
+faker>=23.2
+torch
+tokenizers
+transformers

@@ -1,21 +1,15 @@
 #!/usr/bin/bash
 
-PROJECT="$(dirname $0)/.."
+PROJECT=$(realpath "$(dirname $0)/..")
+BATCH=$0-pbs
 
-CONFIG=$PROJECT/config
-SRC=$PROJECT/src
-DATA=$PROJECT/data
+LOGDIR=$PROJECT/log
+mkdir -p $LOGDIR
 
-[ -d "$CONFIG" ] || (echo "Could not find config directory." >&2 && exit 1)
-[ -d "$SRC" ]    || (echo "Could not find src directory." >&2    && exit 1)
-[ -d "$DATA" ]   || (echo "Could not find data directory." >&2   && exit 1)
+JOB=$(qsub -o $LOGDIR \
+           -l select=1:ngpus=1:ncpus=2:mem=16gb:gpu_mem=16gb:scratch_local=30gb \
+           -l walltime=24:00:00 \
+           -q gpu \
+           $BATCH)
 
-while :; do
-    python3 -- "$SRC/shellbot_main.py" \
-        "$CONFIG/shellbot_config.ini" \
-        "$CONFIG/shellbot_token.txt" \
-        "$DATA"
-
-    [ "$?" -eq 69 ] || break
-done
-
+[ "$?" != "0" ] && (echo "failed" >&2; exit 1)

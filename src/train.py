@@ -1,84 +1,15 @@
-import shellbot
+#/usr/bin/env python3
 
-shellbot.log('Importing libraries', ...)
+from utils.general import *
+from utils import training
+import os
 
-import threading
-import torch
-import sys, os, time
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
-from transformers import DataCollatorForLanguageModeling, TrainingArguments, Trainer
-from transformers.trainer_callback import TrainerCallback
-from dataset import ChatDataset
-import numpy as np
+def train(args):
+    from transformers import TrainingArguments, Trainer
 
-shellbot.success()
+    model, tokenizer = get_model_and_tokenizer(args)
+    dataset, collator = get_chat_dataset_and_collator(args, tokenizer=tokenizer)
 
-
-def train(data_dir):
-    train_path = os.path.join(data_dir, 'train.txt')
-    val_path = os.path.join(data_dir, 'val.txt')
-    model_name = 'gpt2-xl'
-    tokenizer_name = model_name
-    block_size = lambda i: np.random.choice([64, 128, 256])
-    epochs = 8
-    bsize = 4
-    save_dir = os.path.join(data_dir, "chat_model11")
-    whitelist = ["patz", "Patztablook TwentyTwo", "you",
-                 "Sběratel Banánů", "Alexander Terziev",
-                 "Martin McNickle", "Jan Zasadil", "Filip Kastl",
-                 "Jaroslav Žukov", "Robin Stringer", "Jakub Tichanek"]
-
-    
-    print(f'{epochs=} {bsize=}')
-    print(f'{save_dir=}')
-    sys.stdout.flush()
-
-    special_tokens = {
-        'conversation_start': '[CSTART]',
-        'conversation_end': '[CEND]',
-        'message_start': '[MSTART]',
-        'breakpoint': '[BREAK]',
-        'message_end': '[MEND]',
-        'writes': '[WRITES]',
-        'avoid': '[AVOID]',
-    }
-
-    shellbot.log(f"Creating tokenizer ({tokenizer_name=})", ...)
-    tokenizer = GPT2Tokenizer.from_pretrained(tokenizer_name)
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens.values())})
-    shellbot.success()
-
-    print(f"{train_path=}")
-    print(f"{val_path=}", flush=True)
-
-    shellbot.log(f"Loading datasets ({block_size=})", ...)
-    train_dataset = ChatDataset(
-        tokenizer=tokenizer,
-        text_path=train_path,
-        block_size=block_size,
-        special_tokens=special_tokens,
-        whitelist=whitelist
-    )
-    val_dataset = ChatDataset(
-        tokenizer=tokenizer,
-        text_path=val_path,
-        block_size=block_size,
-        special_tokens=special_tokens,
-        whitelist=whitelist
-    )
-    shellbot.success()
-
-    shellbot.log("Creating data collator", ...)
-    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
-    shellbot.success()
-
-    shellbot.log(f"Creating model ({model_name=})", ...)
-    model = GPT2LMHeadModel.from_pretrained(model_name)
-    model.resize_token_embeddings(len(tokenizer))
-    shellbot.success()
-
-    shellbot.log("Preparing training args", ...)
     training_args = TrainingArguments(
         output_dir=os.path.join(data_dir, "training"),
         logging_dir=os.path.join(data_dir, "training", "logs"),
@@ -90,79 +21,37 @@ def train(data_dir):
         warmup_steps=10,
         #evaluation_strategy='epoch'
     )
-    shellbot.success()
-
-    shellbot.log("Creating trainer", ...)
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        data_collator=data_collator,
-        train_dataset=train_dataset,
-        #eval_dataset=val_dataset
-    )
-    trainer.callback_handler.callbacks = [LogCallback()]
-    shellbot.success()
-
-    shellbot.log("Starting training")
-    trainer.train()
-    shellbot.log("Training finished")
-
-    shellbot.log("Saving tokenizer", ...)
-    tokenizer.save_pretrained(save_dir)
-    shellbot.success()
-
-    shellbot.log("Saving model", ...)
-    model.save_pretrained(save_dir)
-    shellbot.success()
-
-class LogCallback(TrainerCallback):
-    BLANK = '‎ '
-
-    def __init__(self):
-        super().__init__()
-
-    def on_step_end(self, args, state, control, **kwargs):
-        cur = state.global_step - 1
-        end = state.max_steps
-        interval = max(end // 1000, 1)
-        if cur % interval == 0 or cur == end - 1:
-            self._print_progress(cur, end)
-
-    def on_log(self, args, state, control, logs=None, **kwargs):
-        _ = logs.pop("total_flos", None)
-        if state.is_local_process_zero:
-            print(logs, flush=True)
-
-    def _print_progress(self, current, total):
-        pad = len(str(total))
-        shellbot.log(LogCallback.BLANK + str(current + 1).rjust(pad), '/', total, ...)
-
-class FlushCallback(TrainerCallback):
-    def on_train_begin(self, args, state, control, **kwargs):
-        print(flush=True)
-
-    def on_step_end(self, args, state, control, **kwargs):
-        print(flush=True)
-
-    def on_prediction_step(self, args, state, control, eval_dataloader=None, **kwargs):
-        print(flush=True)
-
-    def on_evaluate(self, args, state, control, **kwargs):
-        print(flush=True)
-
-    def on_predict(self, args, state, control, **kwargs):
-        print(flush=True)
-
-    def on_log(self, args, state, control, logs=None, **kwargs):
-        print(flush=True)
-
-    def on_train_end(self, args, state, control, **kwargs):
-        print(flush=True)
 
 
-def main(argv):
-    data_dir = "/storage/brno2/home/zavorap/rp-patrik-zavoral/data"
-    train(data_dir)
+def get_model_and_tokenizer(args):
+    #from transformers import LlamaForCausalLM
+    from transformers import GPT2Tokenizer, GPT2LMHeadModel
+    model = LlamaForCausalLM.from_pretrained(args.hub_model_variant)
+    tokenizer = GPT2Tokenizer.from_pretrained(args.hub_model_variant)
+    model.resize_token_embeddings(len(tokenizer))
+    return model
+
+def get_chat_dataset_and_collator(args, tokenizer):
+    eos_token_id = 50256
+    data_path = 'tokenized.pkl'
+
+    import pickle
+    with open(os.path.join(args.data_dir, data_path), 'rb') as f:
+        tokenized = pickle.load(f)
+    ds = training.MaskedDataset(tokenized, max_tokens=args.max_tokens)
+    col = training.DataCollator(pad_token_id=eos_token_id)
+    return ds, col
+
+def main(args):
+    train(args)
+
+def get_args():
+    import argparse
+    parser = argparse.ArgumentParser(prog='train')
+    parser.add_argument('--hub-model-variant', type=str, required=True)
+    parser.add_argument('--data-dir', type=str, required=True)
+    parser.add_argument('--max_tokens', type=int, required=True)
+    return parser.parse_args()
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main(get_args())
