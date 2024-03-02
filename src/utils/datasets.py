@@ -2,7 +2,6 @@ import dataclasses
 import json
 from datetime import datetime
 import os
-import IPython.display
 import numpy as np
 import langid
 import collections
@@ -10,7 +9,12 @@ from typing import Optional, Callable
 import re
 import time
 import copy
-#from tokenizers.pre_tokenizers import ByteLevel
+
+try:
+    import IPython.display
+except:
+    IPython = None
+
 
 @dataclasses.dataclass
 class Reaction:
@@ -135,6 +139,8 @@ def get_users_list(chat: list) -> list[str]:
     return list(users)
 
 def make_chat_view(chat, indices):
+    if not IPython: raise RuntimeError("IPython is missing")
+
     def message_view(m: Message):
         user = m.user
         issues_by_pos = [(i.span[0], i) for i in m.issues] + \
@@ -292,6 +298,8 @@ def get_users(ms: list[Message], threshold=0.05):
 
 
 def get_info(chat, languages=None):
+    if not IPython: raise RuntimeError("IPython is missing")
+
     languages = ""
     for l, f in get_languages(chat, languages).items():
         languages += f"{l}: {100 * f:.0f}%, "
@@ -309,9 +317,6 @@ def get_info(chat, languages=None):
         html += "</tr>"
     html += "</table>"
     IPython.display.display(IPython.display.HTML(html))
-
-def check_issue(message: Message, fun: Callable) -> Message:
-    pass
 
 def spans_overlap(span1, span2):
     a1, b1 = span1
@@ -442,6 +447,8 @@ def actions_to_chat(actions: list[Action]) -> list[Message]:
     return messages
 
 def simulate(actions: list[Action], sleep: Optional[float] = None):
+    if not IPython: raise RuntimeError("IPython is missing")
+
     def render(actions):
         chat = actions_to_chat(actions)
         IPython.display.clear_output(wait=True)
@@ -519,6 +526,8 @@ def add_control_actions(actions: list[Action],
     return buff
 
 def view_masked(s: str, m: str):
+    if not IPython: raise RuntimeError("IPython is missing")
+
     buff = ""
     mask = False
     last = 0

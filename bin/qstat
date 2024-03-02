@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+
+qstat -u zavorap @meta-pbs.metacentrum.cz @cerit-pbs.cerit-sc.cz @elixir-pbs.elixir-czech.cz
+
