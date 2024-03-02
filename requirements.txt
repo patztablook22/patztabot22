@@ -3,5 +3,6 @@ faker>=23.2
 torch
 tokenizers
 transformers
-git+https://github.com/patztablook22/shellbot
 accelerate
+git+https://github.com/patztablook22/shellbot
+git+https://github.com/patztablook22/genbot

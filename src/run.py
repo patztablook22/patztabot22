@@ -10,22 +10,21 @@ def model(streams):
         stream.write(f"Echo {len(stream.data)}")
 
 class Patztabot(genbot.Genbot):
-
-    # We will gatekeep the attend, i.e. only one attend per channel will be running at any one time.
     @genbot.gatekeep
     async def attend(self, channel):
         async with model.stream() as stream:
-
             buff = []
-            async for msg in (ctx := self.context(channel)):
+            async for msg in (ctx := self.context(channel, limit=16)):
+                buff.append(msg)
                 buff.append(f"{msg.author.name}: {msg.content}")
 
-            for data in stream('\n'.join(buff[::-1])):
+            actions = datasets.chat_to_actions(datasets.load_pycord(buff))
+            prompt = '\n'.join([datasets.action_to_string(a, special_tokens=special_tokens) for a in actions])
+
+            async for data in stream(buff[-1]):
                 await channel.send(data)
 
-        # If new messages appeared while we were generating ours, more work has to be done.
-        if not await ctx.current():
-            await self.attend(channel)
+        if not await ctx.current(): await self.attend(channel, force=True)
 
 def get_config(args):
     import json
