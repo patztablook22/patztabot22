@@ -4,27 +4,20 @@ import genbot
 from utils.general import *
 from utils import datasets
 
-@genbot.streamer
-def model(streams):
-    for stream in streams:
-        stream.write(f"Echo {len(stream.data)}")
+async def process_message(msg):
+    time = msg.created_at.timestamp()
+    user = msg.author.name
+    body = msg.content
+    reactions = []
+    for r in msg.reactions:
+        async for user in r.users():
+            reactions.append(datasets.Reaction(user=user.name, name=r.emoji))
 
-class Patztabot(genbot.Genbot):
-    @genbot.gatekeep
-    async def attend(self, channel):
-        async with model.stream() as stream:
-            buff = []
-            async for msg in (ctx := self.context(channel, limit=16)):
-                buff.append(msg)
-                buff.append(f"{msg.author.name}: {msg.content}")
+    return datasets.Message(time=time, user=user, body=body, reactions=reactions)
 
-            actions = datasets.chat_to_actions(datasets.load_pycord(buff))
-            prompt = '\n'.join([datasets.action_to_string(a, special_tokens=special_tokens) for a in actions])
-
-            async for data in stream(buff[-1]):
-                await channel.send(data)
-
-        if not await ctx.current(): await self.attend(channel, force=True)
+SPECIAL_TOKENS = {'eos': '<|endoftext|>',
+                  'types': '<|types|>',
+                  'reacts': '<|reacts|>'}
 
 def get_config(args):
     import json
@@ -34,8 +27,41 @@ def get_config(args):
     token = config.pop('token', None)
     return token, config
 
+def get_model(args):
+    from transformers import AutoTokenizer, GPT2LMHeadModel
+
+    model = GPT2LMHeadModel.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(args.model)
+
+    @genbot.streamer
+    def streamer(streams):
+        for stream in streams:
+            stream.write(f"Echo {len(stream.data)}")
+    return streamer
+
+
 def main(args):
     token, config = get_config(args)
+    model = get_model(args)
+
+    class Patztabot(genbot.Genbot):
+        @genbot.gatekeep
+        async def attend(self, channel):
+            async with model.stream() as stream:
+                chat = []
+                async for m in (ctx := self.context(channel, limit=16)): 
+                    chat.append(await process_message(m))
+
+                actions = datasets.chat_to_actions(chat)
+                prompt = '\n'.join([datasets.action_to_string(a, special_tokens=SPECIAL_TOKENS) for a in actions[::-1]])
+                prompt += '\np: '
+                print(prompt)
+
+                async for data in stream(prompt):
+                    await channel.send(data)
+
+            if not await ctx.current(): await self.attend(channel, force=True)
+
     patztabot = Patztabot(**config)
     model.start_process(minimum=1, maximum=1)
     patztabot.run(token)

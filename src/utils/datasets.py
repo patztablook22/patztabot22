@@ -589,7 +589,7 @@ def action_to_string(action: Action,
     s += f"{special_tokens['eos']}\n" if action.data.get('eos', False) else '\n'
     m = m.ljust(len(s), 'm')
 
-    if action.data['mask_action']:
+    if action.data.get('mask_action', False):
         pass
     else:
         m = " " * len(s)
