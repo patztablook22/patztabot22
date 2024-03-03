@@ -115,10 +115,10 @@ def get_args():
     parser.add_argument('--dataset-path', type=str, required=True)
     parser.add_argument('--model', type=str, required=True)
     parser.add_argument('--hf-token-path', type=str)
-    parser.add_argument('--max_tokens', type=int)
+    parser.add_argument('--max-tokens', type=int)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--bsize", type=int, default=1)
-    parser.add_argument("--warmup_steps", type=int, default=0)
+    parser.add_argument("--warmup-steps", type=int, default=0)
     return parser.parse_args()
 
 if __name__ == '__main__':
