@@ -597,11 +597,16 @@ def action_to_string(action: Action,
     m = [True if c == 'm' else False for c in m]
     return (s, m) if return_mask else s
 
-def action_from_string(s: str) -> Action:
+def action_from_string(s: str, special_tokens: dict) -> Action:
     time = 0
     user = ""
     type = ""
     data = {}
+
+    s = s.strip()
+    if s.rstrip().endswith(special_tokens['eos']):
+        s = s.rstrip()[:-len(special_tokens['eos'])].strip()
+        data['eos'] = True
 
     if m := re.search(r"^(.+)(?=:)", s):
         user = m.group(0)
@@ -609,20 +614,17 @@ def action_from_string(s: str) -> Action:
     else:
         data['followup'] = True
 
-    if m := re.match(r'\<react\>', s):
+    if m := re.match(re.escape(special_tokens['reacts']), s):
         type = 'reaction'
+        data['name'] = s[len(special_tokens['reacts']):].splitlines()[0].strip()[0]
     elif s.strip() == '':
         type = 'idle'
     else:
         type = 'message'
-        if m := re.match(r'\<types\>', s):
+        if m := re.match(re.escape(special_tokens['types']), s):
             data['types'] = True
-
-    if s.rstrip().endswith('<eos>'):
-        data['eos'] = True
-        if type == 'message': data['body'] = s.rstrip()[:-5].rstrip()
-    else:
-        if type == 'message': data['body'] = s.rstrip()
+            s = s[len(special_tokens['types']):]
+        data['body'] = s
 
     return Action(time=time, user=user, type=type, data=data)
 

@@ -6,6 +6,7 @@ from utils import datasets
 import shellbot
 import sys
 import importlib
+import asyncio
 
 async def process_message(msg):
     time = msg.created_at.timestamp()
@@ -13,8 +14,8 @@ async def process_message(msg):
     body = msg.content
     reactions = []
     for r in msg.reactions:
-        async for user in r.users():
-            reactions.append(datasets.Reaction(user=user.name, name=r.emoji))
+        async for u in r.users():
+            reactions.append(datasets.Reaction(user=u.name, name=r.emoji))
 
     return datasets.Message(time=time, user=user, body=body, reactions=reactions)
 
@@ -35,49 +36,29 @@ def get_model(args):
     import torch
     from utils import generation
 
-    model = GPT2LMHeadModel.from_pretrained(args.model)
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
-    #model = generation.FakeModel()
-    #tokenizer = generation.FakeTokenizer()
+    debug = False
+    if debug:
+        model = generation.FakeModel()
+        tokenizer = generation.FakeTokenizer()
+    else:
+        model = GPT2LMHeadModel.from_pretrained(args.model)
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     tokenizer.pad_token_id = tokenizer.eos_token_id
-    generation_eos_id = tokenizer('\n').input_ids[0]
-    print(f"{generation_eos_id=}", flush=True)
-
-    def generate(input_ids, i):
-        importlib.reload(generation)
-        return generation.generate(input_ids, 
-                                   tokenizer=tokenizer,
-                                   model=model,
-                                   eos_token_id=generation_eos_id,
-                                   i=i)
+    stop_token_ids = [198, 628]
+    print(f"{stop_token_ids=}", flush=True)
 
     @genbot.streamer
     def streamer(streams):
         stream = streams[0]
-        try:
-
-            input_ids = tokenizer(stream.data).input_ids
-            for i in range(1):
-                print('input_ids', flush=True)
-                response_ids = generate(input_ids, i)
-                print('response_ids', flush=True)
-
-                do_break = False
-                if tokenizer.eos_token_id in response_ids:
-                    eos_pos = response_ids.index(tokenizer.eos_token_id)
-                    response_ids = response_ids[:eos_pos - 1]
-                    do_break = True
-
-                response = tokenizer.decode(response_ids)
-                print('response', flush=True)
-                stream.write(response)
-
-                if do_break: break
-                input_ids += response_ids
-
-        except Exception as e:
-            stream.write(f"Exception: {e}")
+        chat = stream.data
+        importlib.reload(generation)
+        for action in generation.actions(chat, 
+                                         model=model, 
+                                         tokenizer=tokenizer, 
+                                         stop_token_ids=stop_token_ids,
+                                         special_tokens=SPECIAL_TOKENS):
+            stream.write(action)
         stream.close()
 
     return streamer
@@ -95,28 +76,30 @@ def main(args):
     class Patztabot(genbot.Genbot):
         @genbot.gatekeep
         async def attend(self, channel):
+            typing = None
             try:
                 async with model.stream() as stream:
                     chat = []
                     async for m in (ctx := self.context(channel, limit=16)): 
                         chat.append(await process_message(m))
 
-                    actions = datasets.chat_to_actions(chat)
-                    prompt = '\n'.join([datasets.action_to_string(a, special_tokens=SPECIAL_TOKENS) for a in actions[::-1]])
-                    prompt += '\np: '
+                    last = ctx._cache[0] if ctx._cache else None
+                    async for action in stream(chat[::-1]):
+                        if action.type == 'message':
+                            if action.data.get('types', False) and typing is None:
+                                typing = await channel.typing().__aenter__()
 
-                    async for data in stream(prompt):
-                        await channel.send("data: |" + str(data) + "|")
-                        # body = data.strip()
-                        # if body: await channel.send(body)
-                    print("leaving loop", flush=True)
+                            if body := action.data['body']:
+                                last = await channel.send(body)
 
-                if not await ctx.current(): await self.attend(channel, force=True)
+                        elif action.type == 'reaction':
+                            if last: await last.add_reaction(action.data['name'])
 
             except Exception as e:
-                await channel.send(f"Exception caught: {e}")
+                shellbot.error(f"Exception caught: {e}")
 
-            print("leaving attend", flush=True)
+            if typing is not None: await typing.__aexit__(None, None, None)
+            #if not await ctx.current(): await self.attend(channel, force=True)
 
     shellbot.log("Serving", ...)
     patztabot = Patztabot(**config)
