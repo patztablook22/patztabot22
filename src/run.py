@@ -37,17 +37,20 @@ def get_model(args):
 
     model = GPT2LMHeadModel.from_pretrained(args.model)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
+    #model = generation.FakeModel()
+    #tokenizer = generation.FakeTokenizer()
+
     tokenizer.pad_token_id = tokenizer.eos_token_id
     generation_eos_id = tokenizer('\n').input_ids[0]
-
     print(f"{generation_eos_id=}", flush=True)
 
-    def generate(input_ids):
+    def generate(input_ids, i):
         importlib.reload(generation)
         return generation.generate(input_ids, 
                                    tokenizer=tokenizer,
                                    model=model,
-                                   eos_token_id=generation_eos_id)
+                                   eos_token_id=generation_eos_id,
+                                   i=i)
 
     @genbot.streamer
     def streamer(streams):
@@ -55,9 +58,9 @@ def get_model(args):
         try:
 
             input_ids = tokenizer(stream.data).input_ids
-            for _ in range(1):
+            for i in range(1):
                 print('input_ids', flush=True)
-                response_ids = generate(input_ids)
+                response_ids = generate(input_ids, i)
                 print('response_ids', flush=True)
 
                 do_break = False
@@ -103,7 +106,9 @@ def main(args):
                     prompt += '\np: '
 
                     async for data in stream(prompt):
-                        await channel.send(data)
+                        await channel.send("data: |" + str(data) + "|")
+                        # body = data.strip()
+                        # if body: await channel.send(body)
                     print("leaving loop", flush=True)
 
                 if not await ctx.current(): await self.attend(channel, force=True)

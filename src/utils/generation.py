@@ -1,7 +1,9 @@
 import torch
+import dataclasses
 
 def generate(input_ids, tokenizer, model, **kwargs):
     input_ids = input_ids[-500:]
+    i = kwargs.get('i', 0)
     length = len(input_ids)
     print('generation start', flush=True)
     output_ids = model.generate(input_ids=torch.tensor([input_ids], dtype=torch.long),
@@ -18,3 +20,21 @@ def generate(input_ids, tokenizer, model, **kwargs):
     print(tokenizer.decode(response_ids))
     return [1,2,3]
 
+class FakeModel:
+    def generate(self, input_ids, *args, **kwargs):
+        return torch.tensor([input_ids.tolist()[0] + [4, 5, 6]], dtype=torch.long)
+
+@dataclasses.dataclass
+class FakeTokenizer:
+    eos_token_id: int = 12345
+    pad_token_id: int = 12345
+
+    def __call__(self, *args, **kwargs):
+        @dataclasses.dataclass
+        class FakeResponse:
+            input_ids: list
+        return FakeResponse(input_ids=[1,2,3])
+
+
+    def decode(self, *args, **kwargs):
+        return 'fake decode'
