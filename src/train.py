@@ -1,7 +1,7 @@
 #/usr/bin/env python3
 
 from utils.general import *
-from utils import training
+from utils import training, datasets
 import os
 import sys
 import shellbot
@@ -56,7 +56,8 @@ def get_model_and_tokenizer(args):
     else:
         hf_token = None
 
-    EXTRA_TOKENS = ['<|types|>', '<|reacts|>']
+    control_tokens = datasets.CONTROL_TOKENS
+    EXTRA_TOKENS = [tok for tok in control_tokens.values() if tok != 'eos']
 
     def configure(model, tokenizer):
         tokenizer.add_tokens(EXTRA_TOKENS)

@@ -1,5 +1,6 @@
 langid>=1.1
 faker>=23.2
+unidecode
 torch
 tokenizers
 transformers

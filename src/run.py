@@ -7,6 +7,7 @@ import shellbot
 import sys
 import importlib
 import asyncio
+import random
 
 async def process_message(msg):
     time = msg.created_at.timestamp()
@@ -18,10 +19,6 @@ async def process_message(msg):
             reactions.append(datasets.Reaction(user=u.name, name=r.emoji))
 
     return datasets.Message(time=time, user=user, body=body, reactions=reactions)
-
-SPECIAL_TOKENS = {'eos': '<|endoftext|>',
-                  'types': '<|types|>',
-                  'reacts': '<|reacts|>'}
 
 def get_config(args):
     import json
@@ -36,10 +33,27 @@ def get_model(args):
     import torch
     from utils import generation
 
-    debug = False
+    debug = True
     if debug:
-        model = generation.FakeModel()
-        tokenizer = generation.FakeTokenizer()
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
+        tokenizer.add_tokens([tok for tok in datasets.CONTROL_TOKENS.values() if tok != 'eos'])
+        actions = [datasets.Action(time=0, user='p', type='message',
+                                   data={'body': 'lorem ipsum dolor sit amet'}),
+                   datasets.Action(time=0, user='p', type='message',
+                                   data={'body': 'another lorem ipsum dolor sit amet'}),
+                   datasets.Action(time=0, user='p', type='reaction',
+                                   data={'name': '❤️'}),
+                   ]
+        buff = lmap(datasets.action_to_string, actions)
+        untokenized = []
+        for _ in range(10):
+            sequence = []
+            for _ in range(random.randint(1, 4)):
+                sequence.append(random.choice(buff))
+            untokenized.append(''.join(sequence))
+
+        model = generation.SamplingModel(tokenizer=tokenizer,
+                                         untokenized=untokenized)
     else:
         model = GPT2LMHeadModel.from_pretrained(args.model)
         tokenizer = AutoTokenizer.from_pretrained(args.model)
@@ -50,16 +64,11 @@ def get_model(args):
 
     @genbot.streamer
     def streamer(streams):
-        stream = streams[0]
-        chat = stream.data
+        chat = streams[0].data
         importlib.reload(generation)
-        for action in generation.actions(chat, 
-                                         model=model, 
-                                         tokenizer=tokenizer, 
-                                         stop_token_ids=stop_token_ids,
-                                         special_tokens=SPECIAL_TOKENS):
-            stream.write(action)
-        stream.close()
+        pipeline = generation.Pipeline(model=model, tokenizer=tokenizer)
+        for action in pipeline(chat):
+            streams[0].write(action)
 
     return streamer
 
@@ -85,15 +94,16 @@ def main(args):
 
                     last = ctx._cache[0] if ctx._cache else None
                     async for action in stream(chat[::-1]):
-                        if action.type == 'message':
-                            if action.data.get('types', False) and typing is None:
+                        type, eoa = action.type, action.data['yeet']['eoa']
+                        if type == 'message':
+                            if typing is None:
                                 typing = await channel.typing().__aenter__()
 
-                            if body := action.data['body']:
+                            if eoa and (body := action.data['body']):
                                 last = await channel.send(body)
 
                         elif action.type == 'reaction':
-                            if last: await last.add_reaction(action.data['name'])
+                            if eoa and last: await last.add_reaction(action.data['name'])
 
             except Exception as e:
                 shellbot.error(f"Exception caught: {e}")

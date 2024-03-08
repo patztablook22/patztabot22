@@ -130,7 +130,7 @@ def load_messenger(path: str) -> list[Message]:
 
     return sorted(messages, key=lambda m: m.time)
 
-def get_users_list(chat: list) -> list[str]:
+def get_users(chat: list) -> list[str]:
     users = set()
     for m in chat:
         users.add(m.user)
@@ -171,7 +171,7 @@ def make_chat_view(chat, indices):
 
         return f"""<tr>
                     <td style="vertical-align: top; white-space: nowrap; width: 10em; overflow: hidden; text-overflow: ellipsis">{user}</td>
-                    <td style="text-align: left;">{content}{reactions}</td></tr>"""
+                    <td style="text-align: left;"><span style="white-space: pre">{content}</span>{reactions}</td></tr>"""
 
     buff = ''.join([message_view(chat[i]) for i in indices])
     
@@ -215,48 +215,13 @@ def get_languages(ms, languages=None, threshold=0.05):
     for m in ms:
         body = m.body
         if len(body) >= 3:
-            # ls, confs = zip(*langid.rank(body))
-            # confs = softmax(confs)
-            # i = np.argmax(confs)
-            # l, conf = ls[i], confs[i]
-            # if conf > 0.90:
-                # classified += 1
-            # else:
-                # l = None
             classified += 1
-            l, conf = langid.classify(body)
+            l, _ = langid.classify(body)
         else:
             l = None
         buff.append(l)
     
-    if not batch:
-        return buff[0]
-
-    counter = collections.Counter(buff)
-    buff1 = {}
-    for l in counter:
-        if not l: continue
-        f = counter[l] / classified
-        if f < threshold: continue
-        buff1[l] = f
-    return buff1
-
-def get_users(ms: list[Message], threshold=0.05):
-    buff = []
-    total = 0
-    for m in ms:
-        if not m.user: continue
-        total += 1
-        buff.append(m.user)
-
-    counter = collections.Counter(buff)
-    buff = {}
-    for user in counter:
-        if not user: continue
-        f = counter[user] / total
-        if f < threshold: continue
-        buff[user] = f
-    return buff
+    return buff if batch else buff[0]
 
 # def plot_summary(ms, ax):
     # ax.axis('off')
@@ -372,6 +337,7 @@ def censor(message: Message,
 
 def make_name_mapper(users: list[str], fixed: dict = {}):
     import faker
+    from unidecode import unidecode
     fkr = faker.Faker()
     mapper = {}
     for u in users:
@@ -395,21 +361,28 @@ def make_name_mapper(users: list[str], fixed: dict = {}):
             temp[ss[i]] = tt[min(i, len(tt) - 1)]
     mapper |= temp
 
-    mapper2 = {}
+    # remove diacritics
+    temp = {}
     for s, t in mapper.items():
-        if len(s) <= 3: continue
-        mapper2[s] = t
-    return mapper2
+        temp[unidecode(s)] = unidecode(t)
+    mapper |= temp
+
+    return mapper
 
 def change_names(message: Message, mapper: dict) -> Message:
     """ Must be done BEFORE censorship """
 
     m = copy.deepcopy(message)
     for s, t in mapper.items():
-        m.user = m.user.replace(s, t)
-        m.body = m.body.replace(s, t)
-        for r in m.reactions:
-            r.user = r.user.replace(s, t)
+        if len(s) <= 3:
+            if m.user == s: m.user = t
+            for r in m.reactions:
+                if r.user == s: r.user = t
+        else:
+            m.user = m.user.replace(s, t)
+            m.body = m.body.replace(s, t)
+            for r in m.reactions:
+                r.user = r.user.replace(s, t)
     return m
 
 def chat_to_actions(chat: list[Message]) -> list[Action]:
@@ -419,13 +392,16 @@ def chat_to_actions(chat: list[Message]) -> list[Action]:
     def append(*args, **kwargs): actions.append(Action(*args, **kwargs))
 
     for m in chat:
-        append(time=m.time, 
-               user=m.user, 
-               type='message', 
-               data={'body': m.body,
-                     'issues': m.issues})
+        if len(m.body) > 0 or len(m.attachments) == 0:
+            append(time=m.time, 
+                   user=m.user, 
+                   type='message', 
+                   data={'body': m.body,
+                         'issues': m.issues})
+        for a in m.attachments:
+            append(time=m.time, user=m.user, type='attachment', data={'name': a})
         for r in m.reactions:
-            append(time=m.time, user=r.user, type='reaction', data={"name": r.name})
+            append(time=m.time, user=r.user, type='reaction', data={'name': r.name})
 
     return actions
 
@@ -439,6 +415,13 @@ def actions_to_chat(actions: list[Action]) -> list[Message]:
                                     user=a.user, 
                                     body=a.data['body'],
                                     issues=a.data.get('issues', [])))
+        elif a.type == 'attachment':
+            messages.append(Message(time=a.time, 
+                                    user=a.user, 
+                                    body="",
+                                    attachments=[a.data['name']],
+                                    issues=a.data.get('issues', [])))
+
         elif a.type == 'reaction':
             if len(messages) == 0: continue
             messages[-1].reactions.append(Reaction(user=a.user, name=a.data['name']))
@@ -484,60 +467,60 @@ def group_by_user_and_time(xs: list, duration_limit=None, pause_limit=None, coun
 def mask_actions(actions: list[Action], predicate: Callable) -> list[Action]:
     def mapper(a):
         a1 = copy.deepcopy(a)
-        a1.data['mask_action'] = predicate(a)
+        a1.data['mask_action'] = a1.data.get('mask_action', False) or predicate(a)
         return a1
     return list(map(mapper, actions))
 
 def add_control_actions(actions: list[Action], 
-                        users, 
+                        agents, 
                         duration_limit=None, 
                         pause_limit=None, 
                         count_limit=None,
                         idle_rate=1) -> list[Action]:
     buff = []
+    prev_group = None
 
     for group in group_by_user_and_time(actions, 
                                         duration_limit=duration_limit, 
                                         pause_limit=pause_limit,
                                         count_limit=count_limit):
         user = group[0].user
-        #buff.append(Action(time=0, user='', type='sep'))
-        if user in users:
+        if user in agents:
             for i, a in enumerate(group):
                 a1 = copy.deepcopy(a)
-                if a1.type == 'message':
-                    if i == 0 or group[i - 1].type != 'message':
-                        a1.data['types'] = True
                 if i != 0:
                     a1.data['followup'] = True
-                if i == len(group) - 1:
+                if i == len(group) - 1: 
                     a1.data['eos'] = True
                 buff.append(a1)
 
         else:
             for i, a in enumerate(group):
                 a1 = copy.deepcopy(a)
-                if i != 0:
+                if i != 0 or (prev_group and prev_group[0].user == user):
                     if np.random.uniform() < idle_rate:
-                        for u in users:
-                            buff.append(Action(time=a1.time, user=u, type='idle'))
+                        for agent in agents:
+                            buff.append(Action(time=a1.time, 
+                                               user=agent, 
+                                               type='idle',
+                                               data={'eos': True}))
                 buff.append(a1)
-
+        prev_group = group
     return buff
 
 def view_masked(s: str, m: str):
     if not IPython: raise RuntimeError("IPython is missing")
 
     buff = ""
-    mask = False
+    mask = True
     last = 0
 
     i = 0
     for i in range(len(m)):
         tag = None
-        if m[i] and not mask:
-            tag = """<span style="color: white">"""
         if not m[i] and mask:
+            tag = """<span style="color: white">"""
+        if m[i] and not mask:
             tag = """</span>"""
 
         if tag is None: continue
@@ -546,99 +529,139 @@ def view_masked(s: str, m: str):
         mask = m[i]
 
     if i != last:
-        buff += s[last:i]
+        buff += s[last:i+1]
 
-    html = f"""<pre style="color: grey">{buff}</pre>"""
+    html = f"""<pre style="color: grey; white-space: pre; width: 100%">{buff}</pre>"""
     IPython.display.display(IPython.display.HTML(html))
+
+CONTROL_TOKENS = {'goes': '<|goes|>',
+                  'eos': '<|endoftext|>',
+                  'eoa': '<|endofaction|>'}
+
+for action_type in ['message', 'reaction', 'idle', 'attachment']:
+    CONTROL_TOKENS[action_type] = f"<|{action_type}|>"
 
 def action_to_string(action: Action, 
                      return_mask: bool = False,
-                     special_tokens: dict = {}):
+                     control_tokens: dict = {}):
+    control_tokens = control_tokens | CONTROL_TOKENS
     if action.type == 'message':
         b = action.data['body']
-        m = ['m'] * len(b)
-        for i in action.data['issues']:
+        m = [' '] * len(b)
+        for i in action.data.get('issues', []):
             if i.type in ['censor']:
                 for j in range(i.span[0], i.span[1]):
-                    m[j] = ' '
+                    m[j] = 'm'
         m = ''.join(m)
+        s = b
 
-        if action.data.get('types', False):
-            s = f"{special_tokens['types']}\n{b}"
-            m = m.rjust(len(s), 'm')
-        else:
-            m = m
-            s = b
     elif action.type == 'reaction':
-        s = f"{special_tokens['reacts']} {action.data['name']}"
-        m = 'm' * len(s)
+        s = f"{action.data['name']}"
+        m = ' ' * len(s)
     elif action.type == 'idle':
-        m = ""
-        s = f""
-    elif action.type == 'sep':
-        m = ""
-        s = f"================================================"
+        s = ""
+        m = f' ' * len(s)
+    elif action.type == 'attachment':
+        s = f"{action.data['name']}"
+        m = ' ' * len(s)
     else: 
         raise NotImplementedError
 
-    if action.type not in ['sep']:
-        if not action.data.get('followup', False):
-            s = f"{action.user}: {s}"
-            m = m.rjust(len(s), 'm')
+    s = f"{control_tokens[action.type]}{s}"
+    m = m.rjust(len(s), ' ')
 
-    s += f"{special_tokens['eos']}\n" if action.data.get('eos', False) else '\n'
-    m = m.ljust(len(s), 'm')
+    if not action.data.get('followup', False):
+        s = f"{action.user}{control_tokens['goes']}{s}"
+        m = m.rjust(len(s), ' ')
+
+    s += control_tokens['eoa']
+    m = m.ljust(len(s), ' ')
+
+    if action.data.get('eos', False):
+        s += control_tokens['eos']
+        m = m.ljust(len(s), ' ')
 
     if action.data.get('mask_action', False):
-        pass
+        m = "m" * len(s)
     else:
-        m = " " * len(s)
+        pass
 
-    m = [True if c == 'm' else False for c in m]
+    m = [False if c == ' ' else True for c in m]
     return (s, m) if return_mask else s
 
-def action_from_string(s: str, special_tokens: dict) -> Action:
+def yeet_actions(s: str, control_tokens: dict = {}) -> list[Action]:
+    #print(s)
+    control_tokens = control_tokens | CONTROL_TOKENS
     time = 0
-    user = ""
-    type = ""
-    data = {}
+    user = None
+    type = None
+    data = {'yeet': {}}
 
+    goes = CONTROL_TOKENS['goes'] 
+    if (pos := s.find(goes)) != -1:
+        user, s = s[:pos], s[pos + len(goes):]
+
+    types = ['message', 'reaction', 'idle', 'eos']
+    for t in types:
+        if s.startswith(CONTROL_TOKENS[t]):
+            type = t
+            s = s[len(CONTROL_TOKENS[t]):]
+            break
+
+    if not user and not type: return []
+
+    eoa = CONTROL_TOKENS['eoa']
+    if (pos := s.find(eoa)) != -1:
+        s, rest = s[:pos], s[pos + len(eoa):]
+        data['yeet']['eoa'] = True
+    else:
+        data['yeet']['eoa'] = False
+        rest = None
+
+    for tok in control_tokens.values():
+        s = s.replace(tok, '')
     s = s.strip()
-    if s.rstrip().endswith(special_tokens['eos']):
-        s = s.rstrip()[:-len(special_tokens['eos'])].strip()
-        data['eos'] = True
 
-    if m := re.search(r"^(.+)(?=:)", s):
-        user = m.group(0)
-        s = s[len(user)+1:].lstrip()
-    else:
-        data['followup'] = True
+    if not type and s: type = 'message'
 
-    if m := re.match(re.escape(special_tokens['reacts']), s):
-        type = 'reaction'
-        data['name'] = s[len(special_tokens['reacts']):].splitlines()[0].strip()[0]
-    elif s.strip() == '':
-        type = 'idle'
-    else:
-        type = 'message'
-        if m := re.match(re.escape(special_tokens['types']), s):
-            data['types'] = True
-            s = s[len(special_tokens['types']):]
+    if type == 'eos':
+        pass
+    elif type == 'idle':
+        pass
+    elif type == 'message':
         data['body'] = s
+    elif type == 'reaction':
+        data['name'] = s
+        
+    buff = [Action(time=time, user=user, type=type, data=data)]
+    if rest: buff += yeet_actions(rest, control_tokens=control_tokens)
+    return buff
 
-    return Action(time=time, user=user, type=type, data=data)
-
-def tokenize_action(action: Action, tokenizer, special_tokens):
+def tokenize_action(action: Action, tokenizer, control_tokens: dict = {}):
+    control_tokens = control_tokens | CONTROL_TOKENS
+    controL_tokens_ids = {k: tokenizer(v).input_ids[0] for k, v in control_tokens.items()}
     string, mask = action_to_string(action, 
                                     return_mask=True, 
-                                    special_tokens=special_tokens)
+                                    control_tokens=control_tokens)
     out = tokenizer.encode(string)
     out_ids = np.array(out)
 
     def compute_offsets():
         offsets = []
+        extra = 0
+        prev_extra = False
+        #print("".ljust(5), f"|{string}|")
         for i in range(len(out_ids)):
-            offsets.append(len(tokenizer.decode(out_ids[:i])))
+            temp = tokenizer.decode(out_ids[:i])
+            if i > 0 and out_ids[i-1] in controL_tokens_ids.values():
+                extra += 1
+                temp += ' '
+                if not prev_extra: extra += 1
+                prev_extra = True
+            else:
+                prev_extra = False
+            offsets.append(len(temp) - extra)
+            #print(str(offsets[-1]).ljust(5), f"|{tokenizer.decode(out_ids[:i])}|")
         for i in range(len(offsets)):
             offsets[i] = min(offsets[i:])
 
@@ -650,10 +673,12 @@ def tokenize_action(action: Action, tokenizer, special_tokens):
     source_prev = 0
     target_prev = 0
     for target_p, source_p in enumerate(offsets + [len(mask) + 2]):
-        if source_prev == source_p: continue
-
-        if np.all(mask[source_prev : source_p]):
+        #print('source', source_prev, source_p, string[source_prev:source_p])
+        #print('target', target_prev, target_p, out_ids[target_prev:target_p])
+        if np.any(mask[source_prev : source_p]):
             mask_out[target_prev : target_p] = True
+
+        if source_prev == source_p: continue
 
         source_prev = source_p
         target_prev = target_p
