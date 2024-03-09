@@ -11,7 +11,10 @@ import random
 import queue
 
 class ActionStreamer:
-    def __init__(self, tokenizer, control_tokens: dict = {}):
+    def __init__(self,
+                 tokenizer, 
+                 control_tokens: dict = {},
+                 debug: bool = False):
         self._tokenizer = tokenizer
         self._token_cache = []
         self._next_tokens_are_prompt = True
@@ -19,24 +22,38 @@ class ActionStreamer:
         self._eoa = tokenizer(self._control_tokens['eoa']).input_ids[0]
         self._queue = queue.Queue()
         self._end_signal = None
+        self._clue = ""
 
     def put(self, value):
         # if len(value.shape) > 1 and value.shape[0] > 1:
             # raise ValueError("Only batch size 1 is supporoted")
         # elif len(value.shape) > 1:
             # value = value[0]
-        if len(value) > 1:
-            raise ValueError("Only batch size 1 is supporoted")
+        if hasattr(value, 'shape'):
+            if len(value) > 1:
+                raise ValueError("Only batch size 1 is supporoted")
+            value = value.tolist()[0]
         else:
-            value = value[0]
+            if len(value) > 1:
+                raise ValueError("Only batch size 1 is supporoted")
+            else:
+                value = value[0]
+
+        if isinstance(value, int):
+            value = [value]
 
         if self._next_tokens_are_prompt:
             self._next_tokens_are_prompt = False
+            prompt = self._tokenizer.decode(value)
+            last_eoa = prompt.rfind(self._control_tokens['eoa'])
+            if last_eoa == -1: return
+
+            clue = prompt[last_eoa + len(self._control_tokens['eoa']):].strip()
+            if clue.startswith(self._control_tokens['eos']):
+                clue = clue[len(self._control_tokens['eos']):].strip()
+
+            self._clue = clue
             return
-
-        if not isinstance(value, list):
-            value = value.tolist()
-
 
         self._token_cache += value
         if self._eoa in self._token_cache:
@@ -50,14 +67,21 @@ class ActionStreamer:
             to_yield = [self._token_cache]
             shift = False
 
-        for ids in to_yield:
+        for i, ids in enumerate(to_yield):
             text = self._tokenizer.decode(ids)
+            if i == 0: text = self._clue + text
+            shellbot.log(text, ..., overwrite=True)
+            if i != len(to_yield) - 1:
+                shellbot.success()
+                shellbot.log("")
             actions = datasets.yeet_actions(text, control_tokens=self._control_tokens)
             if not shift: actions = actions[-1:]
             for a in actions: self._queue.put(a)
 
     def end(self):
         self._queue.put(self._end_signal)
+        shellbot.success()
+        shellbot.log("")
 
     def __iter__(self):
         return self
@@ -73,37 +97,63 @@ class Pipeline:
     def __init__(self, 
                  model, 
                  tokenizer, 
-                 agents: list = [], 
-                 control_tokens: dict = {}):
+                 control_tokens: dict = {},
+                 agents: list = [],
+                 debug: bool = False):
         self._model = model
         self._tokenizer = tokenizer
-        self._control_tokens = control_tokens
+        self._control_tokens = control_tokens | datasets.CONTROL_TOKENS
+        self._control_tokens_ids = {k: tokenizer(v).input_ids[0] for k, v in self._control_tokens.items()}
+        self._debug = debug
+        self._agents = agents
 
-    def _make_prompt(self, chat: list[datasets.Message]) -> str:
+    def _make_prompt(self, chat: list[datasets.Message], agent_clue=None) -> str:
         actions = datasets.chat_to_actions(chat)
+        actions = datasets.add_control_actions(actions, 
+                                               agents=self._agents, 
+                                               duration_limit=180, 
+                                               pause_limit=60)
         buff: list = [datasets.action_to_string(a) for a in actions]
-        prompt = '\n'.join(buff)
+        prompt = ''.join(buff)
+
+        goes = self._control_tokens['goes']
+        if agent_clue == True or agent_clue is None and len(self._agents) == 1:
+            if len(self._agents) != 1:
+                raise ValueError("len(agents) must be 1 when clue=True is used, use str instead")
+            prompt = prompt + list(self._agents)[0] + goes
+        elif isinstance(agent_clue, str):
+            prompt = prompt + agent_clue + goes
+
         return prompt
 
-    def __call__(self, chat: list[datasets.Message]):
-        prompt = self._make_prompt(chat)
+    def __call__(self, chat: list[datasets.Message], agent_clue=None):
+        prompt = self._make_prompt(chat, agent_clue)
+        if self._debug: print(prompt, flush=True)
+
         inputs = self._tokenizer(prompt, return_tensors='pt')
+        inputs.input_ids = torch.tensor(inputs.input_ids.tolist()[0][:500])
         length = inputs.input_ids.shape[-1]
-        streamer = ActionStreamer(tokenizer=self._tokenizer)
+        streamer = ActionStreamer(tokenizer=self._tokenizer, debug=self._debug)
 
         gen_kwargs = dict(inputs, streamer=streamer)
         gen_kwargs |= dict(
             pad_token_id=self._tokenizer.pad_token_id,
-            min_length = length + 2,
-            max_length = length + 30,
+            #min_length = length + 2,
+            max_length = length + 128,
             do_sample=True,
-            temperature=3.0,
+            forced_eos_token_id = self._control_tokens_ids['eoa'],
+            temperature=float(2.0),   # MUST be float
+            top_k=16,
+            top_p=0.7,
+            repetition_penalty=0.95,
         )
 
+        if self._debug: shellbot.log('generating...')
         thread = threading.Thread(target=self._model.generate, kwargs=gen_kwargs)
         thread.start()
         for action in streamer:
             yield action
+        if self._debug: shellbot.log('generation terminated')
 
 
 
@@ -147,54 +197,3 @@ class SamplingModel:
             streamer.end()
 
         return [generated]
-
-
-
-
-
-
-
-
-def actions(chat, model, tokenizer, stop_token_ids, special_tokens):
-    importlib.reload(datasets)
-
-    actions = datasets.chat_to_actions(chat)
-    buff = [datasets.action_to_string(a, special_tokens=special_tokens) for a in actions]
-    prompt = '\n'.join(buff)
-    input_ids = tokenizer(prompt).input_ids
-    for i in range(5):
-        response_ids = generate(input_ids, tokenizer, model, 
-                                stop_token_ids=stop_token_ids)
-        print(f"{response_ids=}", flush=True)
-
-        response = tokenizer.decode(response_ids)
-        print(f"{response=}", flush=True)
-
-        action = datasets.action_from_string(response, special_tokens)
-        print(f"{action=}", flush=True)
-
-        if action.type == 'idle': break
-        yield action
-        if action.data.get('eos', False): break
-
-    shellbot.success("generation terminated")
-
-def generate(input_ids, tokenizer, model, **kwargs):
-    input_ids = input_ids[-500:]
-    i = kwargs.get('i', 0)
-    length = len(input_ids)
-    shellbot.log('generating', ...)
-    output_ids = model.generate(input_ids=torch.tensor([input_ids], dtype=torch.long),
-                                num_return_sequences=1,
-                                eos_token_id=kwargs.get('stop_token_ids', None),
-                                pad_token_id=tokenizer.pad_token_id,
-                                min_length = length + 2,
-                                max_length = length + 30,
-                                do_sample=True,
-                                temperature=3.0,
-                                )[0]
-    shellbot.success()
-
-    response_ids = output_ids.tolist()[len(input_ids):]
-    if i == 3: response_ids.append(tokenizer.eos_token_id)
-    return response_ids

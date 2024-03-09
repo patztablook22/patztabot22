@@ -18,7 +18,8 @@ async def process_message(msg):
         async for u in r.users():
             reactions.append(datasets.Reaction(user=u.name, name=r.emoji))
 
-    return datasets.Message(time=time, user=user, body=body, reactions=reactions)
+    m = datasets.Message(time=time, user=user, body=body, reactions=reactions)
+    return datasets.change_names(m, {'patztabot22': 'p'})
 
 def get_config(args):
     import json
@@ -33,7 +34,7 @@ def get_model(args):
     import torch
     from utils import generation
 
-    debug = True
+    debug = False
     if debug:
         tokenizer = AutoTokenizer.from_pretrained(args.model)
         tokenizer.add_tokens([tok for tok in datasets.CONTROL_TOKENS.values() if tok != 'eos'])
@@ -44,6 +45,7 @@ def get_model(args):
                    datasets.Action(time=0, user='p', type='reaction',
                                    data={'name': '❤️'}),
                    ]
+        for a in actions: a.data['followup'] = True
         buff = lmap(datasets.action_to_string, actions)
         untokenized = []
         for _ in range(10):
@@ -59,16 +61,19 @@ def get_model(args):
         tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     tokenizer.pad_token_id = tokenizer.eos_token_id
-    stop_token_ids = [198, 628]
-    print(f"{stop_token_ids=}", flush=True)
 
     @genbot.streamer
     def streamer(streams):
-        chat = streams[0].data
-        importlib.reload(generation)
-        pipeline = generation.Pipeline(model=model, tokenizer=tokenizer)
-        for action in pipeline(chat):
-            streams[0].write(action)
+        try:
+            chat = streams[0].data
+            importlib.reload(generation)
+            pipeline = generation.Pipeline(model=model, tokenizer=tokenizer, 
+                                           agents=['p'],
+                                           debug=True)
+            for action in pipeline(chat):
+                streams[0].write(action)
+        except Exception as e:
+            shellbot.error(e)
 
     return streamer
 
@@ -111,11 +116,11 @@ def main(args):
             if typing is not None: await typing.__aexit__(None, None, None)
             #if not await ctx.current(): await self.attend(channel, force=True)
 
-    shellbot.log("Serving", ...)
+    shellbot.success("Serving...")
     patztabot = Patztabot(**config)
     model.start_process(minimum=1, maximum=1)
     patztabot.run(token)
-    shellbot.log("Done")
+    shellbot.success("Exit")
 
 def get_args():
     import argparse

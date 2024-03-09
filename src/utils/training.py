@@ -66,7 +66,7 @@ class MaskedDataset(Dataset):
         def make_dict(example):
             inputs = example['ids']
             labels = np.copy(inputs)
-            labels[~example['mask']] = -100
+            labels[example['mask']] = -100
             return {
                 'input_ids': np.array(inputs).squeeze(),
                 'attention_mask': np.ones(inputs.shape).squeeze(),
