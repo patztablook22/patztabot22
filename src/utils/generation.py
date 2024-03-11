@@ -18,11 +18,12 @@ class ActionStreamer:
         self._tokenizer = tokenizer
         self._token_cache = []
         self._next_tokens_are_prompt = True
-        self._control_tokens = control_tokens | datasets.CONTROL_TOKENS
+        self._control_tokens = datasets.CONTROL_TOKENS | control_tokens
         self._eoa = tokenizer(self._control_tokens['eoa']).input_ids[0]
         self._queue = queue.Queue()
         self._end_signal = None
         self._clue = ""
+        self._debug = debug
 
     def put(self, value):
         # if len(value.shape) > 1 and value.shape[0] > 1:
@@ -70,18 +71,22 @@ class ActionStreamer:
         for i, ids in enumerate(to_yield):
             text = self._tokenizer.decode(ids)
             if i == 0: text = self._clue + text
-            shellbot.log(text, ..., overwrite=True)
-            if i != len(to_yield) - 1:
-                shellbot.success()
-                shellbot.log("")
+            if self._debug :
+                shellbot.log(text, ..., overwrite=True)
+                if i != len(to_yield) - 1:
+                    shellbot.success()
+                    shellbot.log("")
             actions = datasets.yeet_actions(text, control_tokens=self._control_tokens)
             if not shift: actions = actions[-1:]
-            for a in actions: self._queue.put(a)
+            for a in actions: 
+                if a.type != 'idle': 
+                    self._queue.put(a)
 
     def end(self):
         self._queue.put(self._end_signal)
-        shellbot.success()
-        shellbot.log("")
+        if self._debug:
+            shellbot.success()
+            shellbot.log("")
 
     def __iter__(self):
         return self
@@ -99,20 +104,25 @@ class Pipeline:
                  tokenizer, 
                  control_tokens: dict = {},
                  agents: list = [],
-                 debug: bool = False):
+                 debug: bool = False,
+                 continuous: bool = True):
         self._model = model
         self._tokenizer = tokenizer
         self._control_tokens = control_tokens | datasets.CONTROL_TOKENS
         self._control_tokens_ids = {k: tokenizer(v).input_ids[0] for k, v in self._control_tokens.items()}
         self._debug = debug
         self._agents = agents
+        self._continuous = continuous
 
-    def _make_prompt(self, chat: list[datasets.Message], agent_clue=None) -> str:
+    def chat_to_actions(self, chat: list[datasets.Message]) -> list[datasets.Action]:
         actions = datasets.chat_to_actions(chat)
         actions = datasets.add_control_actions(actions, 
                                                agents=self._agents, 
                                                duration_limit=180, 
                                                pause_limit=60)
+        return actions
+
+    def actions_to_prompt(self, actions: list[datasets.Action], agent_clue=None) -> str:
         buff: list = [datasets.action_to_string(a) for a in actions]
         prompt = ''.join(buff)
 
@@ -126,8 +136,21 @@ class Pipeline:
 
         return prompt
 
-    def __call__(self, chat: list[datasets.Message], agent_clue=None):
-        prompt = self._make_prompt(chat, agent_clue)
+    def __call__(self, 
+                 context: list[datasets.Message] | list[datasets.Action], 
+                 agent_clue=None, 
+                 continuous: Optional[bool] = None):
+        if not context:
+            actions: list[datasets.Action] = []
+        elif "Message" in str(type(context[0])):
+            actions: list[datasets.Action] = self.chat_to_actions(context)
+        elif "Action" in str(type(context[0])):
+            actions: list[datasets.Action] = context
+        else:
+            raise ValueError("`context` must be a list of messages or actions")
+
+        prompt = self.actions_to_prompt(actions, agent_clue=agent_clue)
+        if continuous is None: continuous = self._continuous
         if self._debug: print(prompt, flush=True)
 
         inputs = self._tokenizer(prompt, return_tensors='pt')
@@ -152,6 +175,8 @@ class Pipeline:
         thread = threading.Thread(target=self._model.generate, kwargs=gen_kwargs)
         thread.start()
         for action in streamer:
+            if not continuous:
+                if not action.data['yeet']['eoa']: continue
             yield action
         if self._debug: shellbot.log('generation terminated')
 

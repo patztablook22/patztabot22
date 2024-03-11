@@ -13,23 +13,22 @@ def evaluate(args):
     shellbot.success()
 
     shellbot.log("Loading data", ...)
-    ctxs, refs = get_data(args)
+    ctxs = get_data(args)
     shellbot.success()
 
-    metrics = get_metrics(args)
+    shellbot.log("Generating...")
+    output = []
+    for i, ctx in enumerate(ctxs):
+        shellbot.log(str(i + 1).ljust(len(str(len(ctxs)))), '/', len(ctxs), ..., overwrite=True)
+        hs = [list(pipeline(ctx, continuous=False)) for _ in range(args.n_hypotheses)]
+        buff = {}
+        buff['hypotheses'] = hs
+        if args.outupt_with_ctxs:
+            buff['context'] = ctx
+        output.append(buff)
 
-    def process(x):
-        ctx, ref = x
-        hs = evaluation.generate_hypotheses(pipeline, ctx, n=args.n_hypotheses)
-        ms = {}
-        for metric in metrics:
-            ms[metric.name] = metric(ctx, ref, hs)
+    shellbot.success()
 
-        buff = {'hypotheses': hs, 'metrics': ms}
-        print(buff, flush=True)
-        return buff
-
-    output = lmap(process, zip(ctxs, refs))
     import pickle
     with open(args.output_path, 'wb') as f:
         pickle.dump(output, f)
@@ -80,9 +79,6 @@ def get_data(args):
     ctxs = data
     return ctxs
 
-def get_metrics(args):
-    return []
-
 def main(args):
     evaluate(args)
 
@@ -92,8 +88,8 @@ def get_args():
     parser.add_argument('--data-path', type=str, required=True)
     parser.add_argument('--output-path', type=str, required=True)
     parser.add_argument('--model', type=str, required=True)
-    parser.add_argument('--metrics', type=str, required=True)
     parser.add_argument('--n-hypotheses', type=int, default=1)
+    parser.add_argument('--output-with-contexts', type=bool, default=True)
     return parser.parse_args()
 
 if __name__ == '__main__':

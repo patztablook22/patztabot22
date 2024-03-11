@@ -544,7 +544,7 @@ for action_type in ['message', 'reaction', 'idle', 'attachment']:
 def action_to_string(action: Action, 
                      return_mask: bool = False,
                      control_tokens: dict = {}):
-    control_tokens = control_tokens | CONTROL_TOKENS
+    control_tokens = CONTROL_TOKENS | control_tokens
     if action.type == 'message':
         b = action.data['body']
         m = [' '] * len(b)
@@ -591,7 +591,7 @@ def action_to_string(action: Action,
 
 def yeet_actions(s: str, control_tokens: dict = {}) -> list[Action]:
     #print(s)
-    control_tokens = control_tokens | CONTROL_TOKENS
+    control_tokens = CONTROL_TOKENS | control_tokens
     time = 0
     user = None
     type = None
@@ -638,7 +638,7 @@ def yeet_actions(s: str, control_tokens: dict = {}) -> list[Action]:
     return buff
 
 def tokenize_action(action: Action, tokenizer, control_tokens: dict = {}):
-    control_tokens = control_tokens | CONTROL_TOKENS
+    control_tokens = CONTROL_TOKENS | control_tokens
     controL_tokens_ids = {k: tokenizer(v).input_ids[0] for k, v in control_tokens.items()}
     string, mask = action_to_string(action, 
                                     return_mask=True, 
