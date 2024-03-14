@@ -133,6 +133,8 @@ def pointwise_gpt3(chat: list[datasets.Message],
                "persona": "Does the response correspond to the target persona?",
                "flow": "Does the response help maintain the conversation flow and shows active engagement?"}
 
+    metrics_s = '\n'.join([f'{i + 1}. {m}' for i, m in enumerate(metrics.values())])
+
 
     prompt = f"""A chat excerpt follows. It may contain special tags: 
 
@@ -174,7 +176,7 @@ def pointwise_gpt3(chat: list[datasets.Message],
                  Think carefully about the following questions and then decide each of them
                  on a scale 1(no) - 10 (yes) based strictly on the chat and persona details provided above.
 
-                {'\n'.join([f'{i + 1}. {m}' for i, m in enumerate(metrics.values())])}
+                {metrics_s}
                  """
 
     prompt = '\n'.join([l.strip() for l in prompt.splitlines()])

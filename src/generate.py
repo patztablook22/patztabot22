@@ -1,9 +1,12 @@
 #/usr/bin/env python3
 
-from utils.general import *
-from utils import datasets, generation, evaluation
 import os
 import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
+from general import *
+import datasets
+import generation
+import evaluation
 import shellbot
 import random
 
@@ -19,19 +22,19 @@ def evaluate(args):
     shellbot.log("Generating...")
     output = []
     for i, ctx in enumerate(ctxs):
-        shellbot.log(str(i + 1).ljust(len(str(len(ctxs)))), '/', len(ctxs), ..., overwrite=True)
+        shellbot.log(str(i + 1).rjust(len(str(len(ctxs)))), '/', len(ctxs), ..., overwrite=True)
         hs = [list(pipeline(ctx, continuous=False)) for _ in range(args.n_hypotheses)]
-        buff = {}
-        buff['hypotheses'] = hs
-        if args.outupt_with_ctxs:
-            buff['context'] = ctx
+        buff = {'hypotheses': hs}
+        if args.output_with_contexts: buff['context'] = ctx
         output.append(buff)
 
     shellbot.success()
 
+    shellbot.log("Saving", ...)
     import pickle
     with open(args.output_path, 'wb') as f:
         pickle.dump(output, f)
+    shellbot.success()
 
 def get_pipeline(args):
     from transformers import AutoTokenizer, GPT2LMHeadModel
@@ -67,7 +70,7 @@ def get_pipeline(args):
     tokenizer.pad_token_id = tokenizer.eos_token_id
     pipeline = generation.Pipeline(model=model, tokenizer=tokenizer, 
                                    agents=['p'],
-                                   debug=True)
+                                   debug=False)
     return pipeline
 
 

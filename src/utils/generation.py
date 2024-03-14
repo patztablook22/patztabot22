@@ -71,7 +71,7 @@ class ActionStreamer:
         for i, ids in enumerate(to_yield):
             text = self._tokenizer.decode(ids)
             if i == 0: text = self._clue + text
-            if self._debug :
+            if self._debug:
                 shellbot.log(text, ..., overwrite=True)
                 if i != len(to_yield) - 1:
                     shellbot.success()
