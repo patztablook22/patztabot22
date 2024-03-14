@@ -1,4 +1,4 @@
-from utils import datasets
+from utils import data
 from utils import generation
 from utils.general import *
 from typing import Optional
@@ -9,7 +9,7 @@ import os
 import re
 
 
-def sample_qa_like(actions: list[list[datasets.Action]], context_size: Optional[int] = None, agents: Optional[list] = None, n: Optional[int] = None):
+def sample_qa_like(actions: list[list[data.Action]], context_size: Optional[int] = None, agents: Optional[list] = None, n: Optional[int] = None):
     if context_size is None: size_f = None
     elif isinstance(context_size, int): size_f = lambda i: context_size
     else: size_f = context_size
@@ -53,9 +53,9 @@ def sample_qa_like(actions: list[list[datasets.Action]], context_size: Optional[
 
     return ctxs, refs
 
-def parse_ai_metrics_response(response: str, 
-                              metrics: Optional[list[str]] = None,
-                              return_details: bool = False):
+def parse_pointwise_ai_metrics_response(response: str, 
+                                        metrics: Optional[list[str]] = None,
+                                        return_details: bool = False):
     """ The metrics should be in the same order they were prompted.
         The order should be also made explicit to the model by adding indices (1, ...) to the prompt
     """
@@ -110,13 +110,18 @@ def parse_ai_metrics_response(response: str,
 
     return {q: a for q, a in buff2}
 
-def pointwise_gpt3(chat: list[datasets.Message], 
-                   actions: list[datasets.Action], 
+METRICS = {
+    'persona': "Does it correspond to the target persona?",
+    'flow': "Does it promote the conversation flow and show active engagamenet with the topic?",
+    'cool': "Does it make the conversation more fun?"}
+
+def pointwise_gpt3(chat: list[data.Message], 
+                   actions: list[data.Action], 
                    token: Optional[str] = None,
                    return_details: bool = False):
 
     if token is None: token = os.environ.get("OPENAI_API_KEY")
-    ain = datasets.chat_to_actions(chat)
+    ain = data.chat_to_actions(chat)
 
     control_tokens = {'goes': ': ',
                       'eos': '\n\n\n',
@@ -126,8 +131,95 @@ def pointwise_gpt3(chat: list[datasets.Message],
                       'attachment': '<ATTACHMENT>',
                       'idle': '<IDLE>'}
 
-    context  = "\n".join([datasets.action_to_string(a, control_tokens=control_tokens) for a in ain])
-    response = "\n".join([datasets.action_to_string(a, control_tokens=control_tokens) for a in actions])
+    context  = "\n".join([data.action_to_string(a, control_tokens=control_tokens) for a in ain])
+    response = "\n".join([data.action_to_string(a, control_tokens=control_tokens) for a in actions])
+
+    metrics = {"sound": "Is the response generally sound, given the context and instructions?",
+               "persona": "Does the response correspond to the target persona?",
+               "flow": "Does the response help maintain the conversation flow and shows active engagement?"}
+
+
+    prompt = f"""A chat excerpt follows. It may contain special tags: 
+
+                 <REACTION> means reacting to a message directly with emoji, which should be once in a while to keep the conversation entertaining.
+
+                 <IDLE> means keeping and possibly letting the other user finish. 
+                 This should be used if the other user is in a middle of some thought.
+                 Usually though, a reaction, such as thumbs up, is preferable to complete idleness.
+                 Idleness should be PENALIZED with up to 4 points unless there is a good reason not to.
+
+                 Then a response will follow. You will be evaluating the response according to these instructions:
+                 The author of the respose is a 22 years old theoretical computer science student from Czechia. 
+                 He likes jazz, is in a long term relationship, and is quite extraverted. 
+                 He likes to talk about philosophy, science, religions, politics, the news, dating, and life in general.
+                 Sometimes he swears, and is a jerk. He is often impolite.
+                 At other times, he is empathetic and supportive.
+                 He also likes to be wacky and humorous.
+                 He may also use various slangs.
+
+                 You should expect all of these characteristics. Understand they are between long term friends who know
+                 each other and are comfortable with it and use it to make the conversation more funny.
+                 You should entirely tolerate this.
+
+                 The language should be english. PENALIZE non-english by taking away 3 points.
+                 The response may consist of multiple sub-responses. For example, there could be a <REACTION> and then a more detailed message.
+
+                 First read the chat excerpt carefully:
+
+
+                 {context}
+
+
+                 Now consider the following response:
+
+
+                 {response}
+
+
+                 Think carefully about the following questions and then decide each of them
+                 on a scale 1(no) - 10 (yes) based strictly on the chat and persona details provided above.
+
+                {'\n'.join([f'{i + 1}. {m}' for i, m in enumerate(metrics.values())])}
+                 """
+
+    prompt = '\n'.join([l.strip() for l in prompt.splitlines()])
+    #print(prompt)
+
+    client = OpenAI()
+    completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        model="gpt-3.5-turbo",
+    )
+    response = completion.choices[0].message.content
+    ans = parse_pointwise_ai_metrics_response(response, 
+                                              metrics=metrics.keys(), 
+                                              return_details=return_details)
+    return ans
+
+
+def pointwise_gpt3(chat: list[data.Message], 
+                   actions: list[data.Action], 
+                   token: Optional[str] = None,
+                   return_details: bool = False):
+
+    if token is None: token = os.environ.get("OPENAI_API_KEY")
+    ain = data.chat_to_actions(chat)
+
+    control_tokens = {'goes': ': ',
+                      'eos': '\n\n\n',
+                      'eoa': '\n',
+                      'message': '',
+                      'reaction': '<REACTION>',
+                      'attachment': '<ATTACHMENT>',
+                      'idle': '<IDLE>'}
+
+    context  = "\n".join([data.action_to_string(a, control_tokens=control_tokens) for a in ain])
+    response = "\n".join([data.action_to_string(a, control_tokens=control_tokens) for a in actions])
 
     metrics = {"sound": "Is the response generally sound, given the context and instructions?",
                "persona": "Does the response correspond to the target persona?",
@@ -196,3 +288,16 @@ def pointwise_gpt3(chat: list[datasets.Message],
     ans = parse_ai_metrics_response(response, metrics=metrics.keys(), return_details=return_details)
     return ans
 
+
+def pairwise_gpt3(chat: list[data.Message], 
+                  actions1: list[data.Action],
+                  actions2: list[data.Action],
+                  token: Optional[str] = None,
+                  return_details: bool = False):
+
+    if token is None: token = os.environ.get("OPENAI_API_KEY")
+    ain = data.chat_to_actions(chat)
+
+    metrics = {"sound": "Is the response generally sound, given the context and instructions?",
+               "persona": "Does the response correspond to the target persona?",
+               "flow": "Does the response help maintain the conversation flow and shows active engagement?"}

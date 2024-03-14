@@ -105,6 +105,8 @@ class Pipeline:
                  control_tokens: dict = {},
                  agents: list = [],
                  debug: bool = False,
+                 action_type_whitelist: Optional[list[str]] = None,
+                 action_type_blacklist: Optional[list[str]] = None,
                  continuous: bool = True):
         self._model = model
         self._tokenizer = tokenizer
@@ -113,6 +115,9 @@ class Pipeline:
         self._debug = debug
         self._agents = agents
         self._continuous = continuous
+        self._action_type_whitelist = action_type_whitelist
+        self._action_type_blacklist = action_type_blacklist
+        self._action_type_whitelist = ['reaction']
 
     def chat_to_actions(self, chat: list[datasets.Message]) -> list[datasets.Action]:
         actions = datasets.chat_to_actions(chat)
@@ -139,6 +144,8 @@ class Pipeline:
     def __call__(self, 
                  context: list[datasets.Message] | list[datasets.Action], 
                  agent_clue=None, 
+                 action_type_whitelist: Optional[list[str]] = None,
+                 action_type_blacklist: Optional[list[str]] = None,
                  continuous: Optional[bool] = None):
         if not context:
             actions: list[datasets.Action] = []
@@ -148,6 +155,21 @@ class Pipeline:
             actions: list[datasets.Action] = context
         else:
             raise ValueError("`context` must be a list of messages or actions")
+
+        do_whitelist = self._action_type_whitelist is not None or action_type_whitelist is not None
+        whitelist = set(self._action_type_whitelist) if self._action_type_whitelist
+        if action_type_whitelist: whitelist = whitelist.union(action_type_whitelist)
+
+        do_blacklist = self._action_type_blacklist is not None or action_type_blacklist is not None
+        blacklist = set(self._action_type_blacklist) if self._action_type_blacklist
+        if action_type_blacklist: blacklist = blacklist.union(action_type_blacklist)
+
+        all_types = set(['message', 'idle', 'reaction', 'attachment'])
+        bad_types = all_types.difference(whitelist) if do_whitelist else set()
+        if do_blacklist: bad_types = bad_types.union(blacklist)
+
+        bad_words_ids = [self._control_tokens_ids[t] for t in bad_types]
+        print(bad_words_ids, flush=True)
 
         prompt = self.actions_to_prompt(actions, agent_clue=agent_clue)
         if continuous is None: continuous = self._continuous
@@ -161,6 +183,7 @@ class Pipeline:
         gen_kwargs = dict(inputs, streamer=streamer)
         gen_kwargs |= dict(
             pad_token_id=self._tokenizer.pad_token_id,
+            bad_words_ids=bad_words_ids,
             #min_length = length + 2,
             max_length = length + 128,
             do_sample=True,
